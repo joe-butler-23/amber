@@ -142,14 +142,11 @@ mod tests {
             services::priority_service::PriorityService,
             value_objects::{meta::Meta, read_point::ReadPoint},
         },
-        infrastructure::{
-            repositories::sqlite::{
-                sqlite_folder_repository::SqliteFolderRepository,
-                sqlite_learning_asset_repository::SqliteLearningAssetRepository,
-                sqlite_meta_repository::SqliteMetaRepository,
-                sqlite_trash_repository::SqliteTrashRepository,
-            },
-            value_objects::db_transaction::DbTransaction,
+        infrastructure::repositories::sqlite::{
+            sqlite_folder_repository::SqliteFolderRepository,
+            sqlite_learning_asset_repository::SqliteLearningAssetRepository,
+            sqlite_meta_repository::SqliteMetaRepository,
+            sqlite_trash_repository::SqliteTrashRepository,
         },
         test_utils::create_test_injector,
     };

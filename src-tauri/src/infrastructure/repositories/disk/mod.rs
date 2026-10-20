@@ -20,7 +20,13 @@ async fn write_json(path: &Path, value: &impl Serialize) -> io::Result<()> {
         file.write_all(&bytes).await?;
         file.sync_all().await?;
         drop(file);
-        fs::rename(&temporary, path).await
+        fs::rename(&temporary, path).await?;
+        #[cfg(unix)]
+        fs::File::open(path.parent().unwrap())
+            .await?
+            .sync_all()
+            .await?;
+        Ok(())
     }
     .await;
     if result.is_err() {

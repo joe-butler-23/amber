@@ -5,11 +5,6 @@ use std::{fmt::Display, path::PathBuf};
 pub struct DatabaseLocation(pub(in crate::settings) PathBuf);
 
 impl DatabaseLocation {
-    #[cfg(test)]
-    pub fn new_unchecked(path_buf: PathBuf) -> Self {
-        Self(path_buf)
-    }
-
     pub fn get_path(&self) -> &PathBuf {
         &self.0
     }
