@@ -394,12 +394,10 @@ pub(super) mod tests {
 
         // Assert
 
-        let cards = card_repository.get_all().await.unwrap();
-        assert_eq!(1, cards.len());
-        assert_eq!(cards[0].meta.element_id.id(), actual.card_id);
-        assert_eq!("What is the capital of France?", cards[0].meta.name);
-        assert_eq!("What is the capital of France?", cards[0].front);
-        assert_eq!("Paris", cards[0].back);
+        let card = card_repository.get_by_id(actual.card_id).await.unwrap();
+        assert_eq!("What is the capital of France?", card.meta.name);
+        assert_eq!("What is the capital of France?", card.front);
+        assert_eq!("Paris", card.back);
     }
 
     #[tokio::test]
@@ -409,7 +407,7 @@ pub(super) mod tests {
         let injector = initialize_test_injector().await;
         let scope = injector.start_scope();
         let element_creation_service = scope.resolve::<dyn ElementCreationService>().await;
-        let folder_repository = scope.resolve::<dyn FolderRepository>().await;
+        let meta_repository = scope.resolve::<dyn MetaRepository>().await;
         let card_repository = scope.resolve::<dyn CardRepository>().await;
         let bibliographical_source_repository =
             scope.resolve::<dyn BibliographicalSourceRepository>().await;
@@ -442,8 +440,12 @@ pub(super) mod tests {
             })
             .await
             .unwrap();
-        let parent = folder_repository.get_all().await.unwrap().remove(0);
-        let parent_id = parent.meta.element_id;
+        let parent_id = meta_repository
+            .get_children_ordered(None)
+            .await
+            .unwrap()
+            .remove(0)
+            .element_id;
 
         let tool = CreateCard::new(
             element_creation_service,
@@ -453,24 +455,24 @@ pub(super) mod tests {
 
         // Act
 
-        tool.call(
-            &mut ToolContext::default(),
-            CreateCardArgs {
-                front: "What is the capital of France?".to_string(),
-                back: "Paris".to_string(),
-            },
-        )
-        .await
-        .unwrap();
+        let actual = tool
+            .call(
+                &mut ToolContext::default(),
+                CreateCardArgs {
+                    front: "What is the capital of France?".to_string(),
+                    back: "Paris".to_string(),
+                },
+            )
+            .await
+            .unwrap();
 
         // Assert
 
-        let cards = card_repository.get_all().await.unwrap();
-        assert_eq!(1, cards.len());
-        assert_eq!(Some(parent_id), cards[0].meta.derived_from);
+        let card = card_repository.get_by_id(actual.card_id).await.unwrap();
+        assert_eq!(Some(parent_id), card.meta.derived_from);
         assert_eq!(
             Some(bibliographical_source_id),
-            cards[0].meta.bibliographical_source_id
+            card.meta.bibliographical_source_id
         );
     }
 }

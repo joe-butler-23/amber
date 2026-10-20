@@ -10,7 +10,6 @@ use crate::elements::value_objects::read_point::ReadPoint;
 
 #[async_trait]
 pub trait LearningAssetRepository: Send + Sync {
-    async fn get_all(&self) -> Result<Vec<LearningAsset>, RepositoryError>;
     async fn get_by_id(&self, id: Uuid) -> Result<LearningAsset, RepositoryError>;
     async fn create(
         &self,

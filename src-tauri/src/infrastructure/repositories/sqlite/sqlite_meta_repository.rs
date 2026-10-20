@@ -3,13 +3,15 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use fractional_index::FractionalIndex;
 use injector_derive::ScopeInjectable;
-use uuid::Uuid;
+use uuid::{Uuid, fmt::Hyphenated};
 
 use crate::common::repository_error::RepositoryError;
 use crate::elements::entities::tag::Tag;
+use crate::elements::extensions::into_element_id_ext::{IntoElementIdExt, IntoOptionalElementIdExt};
 use crate::elements::repositories::meta_repository::MetaRepository;
 use crate::elements::value_objects::element_id::ElementId;
 use crate::elements::value_objects::meta::Meta;
+use crate::elements::value_objects::tree_entry::TreeEntry;
 use crate::infrastructure::repositories::sqlite::sqlite_rows::meta_row::MetaRow;
 use crate::infrastructure::repositories::sqlite::sqlite_rows::tag_row::TagRow;
 use crate::infrastructure::value_objects::db_transaction::DbTransaction;
@@ -76,6 +78,43 @@ impl MetaRepository for SqliteMetaRepository {
         .await?;
 
         Ok(row.into())
+    }
+
+    async fn get_tree_entries(&self) -> Result<Vec<TreeEntry>, RepositoryError> {
+        let mut tx = self.tx.lock().await;
+        let rows = sqlx::query!(
+            r#"WITH elements(id, kind, family_order) AS (
+                SELECT id, 'folder', 0 FROM folders
+                UNION ALL SELECT id, 'learning_asset', 1 FROM learning_assets
+                UNION ALL SELECT id, 'extract', 2 FROM extracts
+                UNION ALL SELECT id, 'card', 3 FROM cards
+            )
+            SELECT
+                m.element_id AS "id!: Hyphenated",
+                e.kind AS "kind!: String",
+                m.name AS "name!: String",
+                m.position AS "position!: Vec<u8>",
+                m.parent_id AS "parent_id: Hyphenated",
+                m.parent_type
+            FROM elements e
+            INNER JOIN meta m ON e.id = m.element_id
+            WHERE m.trashed_at IS NULL
+            ORDER BY e.family_order, m.position"#
+        )
+        .fetch_all(tx.as_mut())
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| TreeEntry {
+                element_id: (row.id.into_uuid(), row.kind).into_element_id(),
+                name: row.name,
+                position: FractionalIndex::from_bytes(row.position)
+                    .expect("Invalid fractional index"),
+                parent: (row.parent_id.map(Hyphenated::into_uuid), row.parent_type)
+                    .into_element_id(),
+            })
+            .collect())
     }
 
     async fn delete(&self, id: ElementId) -> Result<(), RepositoryError> {

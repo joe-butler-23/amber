@@ -6,12 +6,16 @@ use crate::common::repository_error::RepositoryError;
 use crate::elements::entities::tag::Tag;
 use crate::elements::value_objects::element_id::ElementId;
 use crate::elements::value_objects::meta::Meta;
+use crate::elements::value_objects::tree_entry::TreeEntry;
 
 #[async_trait]
 pub trait MetaRepository: Send + Sync {
     async fn create_meta(&self, meta: &Meta) -> Result<(), RepositoryError>;
 
     async fn get_by_id(&self, id: Uuid) -> Result<Meta, RepositoryError>;
+
+    /// Live subtype rows in family/position order, without loading their content.
+    async fn get_tree_entries(&self) -> Result<Vec<TreeEntry>, RepositoryError>;
 
     async fn delete(&self, id: ElementId) -> Result<(), RepositoryError>;
     async fn get_tags(&self, id: ElementId) -> Result<Vec<Tag>, RepositoryError>;

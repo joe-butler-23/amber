@@ -44,38 +44,6 @@ impl CardRepository for SqliteCardRepository {
         Ok(())
     }
 
-    async fn get_all(&self) -> Result<Vec<Card>, RepositoryError> {
-        let mut tx = self.tx.lock().await;
-        let tx = tx.as_mut();
-
-        let rows = sqlx::query_as!(
-            CardRow,
-            r#"SELECT
-                m.element_id as "id: _",
-                m.name,
-                m.position as "position: _",
-                m.priority as "priority: _",
-                m.parent_id as "parent_id: _",
-                m.parent_type,
-                m.derived_from_id as "derived_from_id: _",
-                m.derived_from_type,
-                m.study_profile_id as "study_profile_id: _",
-                m.bibliographical_source_id as "bibliographical_source_id: _",
-                m.created_at as "created_at: _",
-                m.modified_at as "modified_at: _",
-                c.front,
-                c.back
-            FROM cards c
-            INNER JOIN meta m ON c.id = m.element_id
-            WHERE m.trashed_at IS NULL
-            ORDER BY m.position"#
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-
-        Ok(rows.into_iter().map(|row| row.into()).collect())
-    }
-
     async fn get_by_id(&self, id: Uuid) -> Result<Card, RepositoryError> {
         let mut tx = self.tx.lock().await;
         let tx = tx.as_mut();
@@ -259,12 +227,10 @@ mod tests {
 
         // Assert
 
-        let remaining = card_repo.get_all().await.unwrap();
-        assert!(
-            !remaining
-                .iter()
-                .any(|c| c.meta.element_id == card.meta.element_id)
-        );
+        assert!(matches!(
+            card_repo.get_by_id(card.meta.element_id.id()).await,
+            Err(RepositoryError::NotFound(_))
+        ));
     }
 
     #[tokio::test]
@@ -314,10 +280,9 @@ mod tests {
 
         // Assert
 
-        let remaining = card_repo.get_all().await.unwrap();
-        let updated = remaining
-            .iter()
-            .find(|c| c.meta.element_id == card.meta.element_id)
+        let updated = card_repo
+            .get_by_id(card.meta.element_id.id())
+            .await
             .unwrap();
         assert_eq!("renamed", updated.meta.name);
     }
