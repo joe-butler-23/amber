@@ -7,7 +7,6 @@ use thiserror::Error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpListener,
-    sync::oneshot,
     time::timeout,
 };
 
@@ -74,60 +73,46 @@ pub async fn run<R: tauri::Runtime>(
     let redirect_uri = format!("http://127.0.0.1:{port}");
     let authorize_url = build_authorize_url(&redirect_uri, &code_challenge, &state);
 
-    let (redirect_tx, redirect_rx) = oneshot::channel::<String>();
-    tokio::spawn(accept_redirect(listener, redirect_tx));
-
-    if app_handle
-        .opener()
-        .open_url(authorize_url, None::<&str>)
-        .is_err()
-    {
-        return Err(GoogleOAuthError::CannotOpenBrowser);
-    }
-
-    let redirect_path = timeout(REDIRECT_TIMEOUT, redirect_rx)
-        .await
-        .map_err(|_| GoogleOAuthError::Timeout)?
-        .map_err(|_| GoogleOAuthError::InvalidRedirect)?;
+    let redirect_path = timeout(REDIRECT_TIMEOUT, async {
+        app_handle
+            .opener()
+            .open_url(authorize_url, None::<&str>)
+            .map_err(|_| GoogleOAuthError::CannotOpenBrowser)?;
+        accept_redirect(listener).await
+    })
+    .await
+    .map_err(|_| GoogleOAuthError::Timeout)??;
 
     let code = extract_authorization_code(&redirect_path, &state)?;
 
     exchange_code_for_id_token(&code, &code_verifier, &redirect_uri).await
 }
 
-/// Accepts the single loopback connection carrying the OAuth redirect,
-/// replies with a static "you can close this tab" page, and forwards the
-/// request's path + query string to the waiting `run` call. Runs as its own
-/// task because the listener has to be alive *before* the browser is
-/// opened, but the request only arrives after the user finishes the consent
-/// screen.
-async fn accept_redirect(listener: TcpListener, redirect_tx: oneshot::Sender<String>) {
-    let Ok((mut stream, _)) = listener.accept().await else {
-        return;
-    };
-
+/// The enclosing deadline owns both accepting a connection and reading its request.
+async fn accept_redirect(listener: TcpListener) -> Result<String, GoogleOAuthError> {
+    let (mut stream, _) = listener
+        .accept()
+        .await
+        .map_err(|_| GoogleOAuthError::InvalidRedirect)?;
     let mut buf = [0u8; 8192];
-    let Ok(n) = stream.read(&mut buf).await else {
-        return;
-    };
-
+    let n = stream
+        .read(&mut buf)
+        .await
+        .map_err(|_| GoogleOAuthError::InvalidRedirect)?;
     let request = String::from_utf8_lossy(&buf[..n]);
-    let Some(path) = request
+    let path = request
         .lines()
         .next()
-        .and_then(|request_line| request_line.split_whitespace().nth(1))
-    else {
-        return;
-    };
-
+        .and_then(|line| line.split_whitespace().nth(1))
+        .ok_or(GoogleOAuthError::InvalidRedirect)?
+        .to_string();
     let response = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
         REDIRECT_RESPONSE_BODY.len(),
         REDIRECT_RESPONSE_BODY
     );
     let _ = stream.write_all(response.as_bytes()).await;
-    let _ = stream.shutdown().await;
-    let _ = redirect_tx.send(path.to_string());
+    Ok(path)
 }
 
 fn generate_random_url_safe_string() -> String {

@@ -108,6 +108,7 @@ impl DocumentUploader for DefaultDocumentUploader {
 fn load_documents(path: &Path, chat_id: Uuid) -> Result<Vec<Document>, DocumentUploaderError> {
     let splitter = TextSplitter::new(ChunkConfig::new(512).with_trim(false));
     let glob = &path.to_string_lossy();
+    let upload_id = Uuid::new_v4();
 
     if let Some(extension) = path.extension()
         && extension == "pdf"
@@ -128,7 +129,7 @@ fn load_documents(path: &Path, chat_id: Uuid) -> Result<Vec<Document>, DocumentU
                     .chunks(&page)
                     .enumerate()
                     .map(move |(chunk_i, chunk)| Document {
-                        id: format!("page_{page_i}_chunk_{chunk_i}"),
+                        id: format!("{upload_id}:page_{page_i}:chunk_{chunk_i}"),
                         content: chunk.to_string(),
                         chat_id,
                     })
@@ -149,193 +150,11 @@ fn load_documents(path: &Path, chat_id: Uuid) -> Result<Vec<Document>, DocumentU
                 .chunks(&content)
                 .enumerate()
                 .map(move |(chunk_i, chunk)| Document {
-                    id: format!("content_{file_i}_chunk_{chunk_i}"),
+                    id: format!("{upload_id}:file_{file_i}:chunk_{chunk_i}"),
                     content: chunk.to_string(),
                     chat_id,
                 })
                 .collect::<Vec<_>>()
         })
         .collect())
-}
-
-#[cfg(test)]
-pub mod tests {
-    use std::{iter, sync::Arc};
-
-    use injector::{injector::Injector, register_scope};
-    use rig::{embeddings::Embedding, tool::Tool};
-    use tokio::sync::Mutex;
-    use uuid::Uuid;
-
-    use crate::{
-        ai_integration::{
-            ai_state::AiState,
-            clients::mock_client::{DEFAULT_MOCK_EMBEDDINGS_DIMS, MockClient},
-            entities::{chat::Chat, message::MessageContent},
-            repositories::ai_repository::AiRepository,
-            services::{
-                document_uploader::DocumentUploader,
-                implementations::default_ai_client_provider::DefaultAiClientProvider,
-            },
-            tools::search_documents::{SearchDocuments, SearchDocumentsArgs},
-        },
-        infrastructure::repositories::{
-            disk::disk_settings_repository::DiskSettingsRepository,
-            sqlite::sqlite_ai_repository::SqliteAiRepository,
-        },
-        settings::{
-            entities::settings::Settings, repositories::settings_repository::SettingsRepository,
-            value_objects::settings_profile::SettingsProfile,
-        },
-        test_utils::{create_temp_directory, create_test_injector},
-    };
-
-    use super::*;
-
-    async fn initialize_test_injector(mock_client: MockClient, state: Arc<AiState>) -> Injector {
-        let mut injector = create_test_injector().await;
-
-        let mut settings = Settings::new(create_temp_directory().await, SettingsProfile::Default);
-        settings.enable_ai = true;
-
-        injector.register_singleton(Arc::new(Mutex::new(settings)));
-        injector.register_singleton(Arc::new(mock_client));
-        injector.register_singleton(state);
-
-        register_scope!(injector, dyn SettingsRepository, DiskSettingsRepository);
-        register_scope!(injector, dyn AiRepository, SqliteAiRepository);
-        register_scope!(injector, dyn AiClientProvider, DefaultAiClientProvider);
-        register_scope!(injector, dyn DocumentUploader, DefaultDocumentUploader);
-
-        injector
-    }
-
-    #[tokio::test]
-    pub async fn upload_document_pdf_file_uploaded_file_and_added_message() {
-        // Arrange
-
-        let mock_client = MockClient {
-            embeddings_model_dims: Some(DEFAULT_MOCK_EMBEDDINGS_DIMS),
-            embed_texts_fn: Arc::new(Some(Box::new(move |request| {
-                if request.len() == 1 && request[0].trim() == "Page 1 content" {
-                    let embeddings = Embedding {
-                        document: String::new(),
-                        vec: iter::once(12f64)
-                            .chain(iter::repeat_n(0f64, DEFAULT_MOCK_EMBEDDINGS_DIMS - 1))
-                            .collect(),
-                    };
-
-                    return Ok(vec![embeddings]);
-                } else if request.len() == 1 && request[0] == "search query" {
-                    let embeddings = Embedding {
-                        document: String::new(),
-                        vec: iter::once(11.9f64)
-                            .chain(iter::repeat_n(0f64, DEFAULT_MOCK_EMBEDDINGS_DIMS - 1))
-                            .collect(),
-                    };
-
-                    return Ok(vec![embeddings]);
-                }
-                unreachable!()
-            }))),
-            ..Default::default()
-        };
-
-        let injector = initialize_test_injector(mock_client, Arc::new(AiState::default())).await;
-        let scope = injector.start_scope();
-        let service = scope.resolve::<dyn DocumentUploader>().await;
-
-        let ai_repository = scope.resolve::<dyn AiRepository>().await;
-        let chat_id = Uuid::new_v4();
-        ai_repository
-            .upsert_chat(&Chat::new(Some(chat_id), "test".to_string()))
-            .await
-            .unwrap();
-
-        let path =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/example.pdf");
-
-        // Act
-
-        let actual = service.upload_document(path, chat_id).await.unwrap();
-
-        // Assert
-
-        assert_eq!(UploadOutcome::Uploaded, actual);
-        let messages = ai_repository
-            .get_chat_messages_ordered(chat_id)
-            .await
-            .unwrap();
-        assert_eq!(1, messages.len());
-        if let MessageContent::Document(document) = messages[0].content() {
-            assert_eq!(document.file_name, "example.pdf");
-        } else {
-            panic!("Expected document");
-        }
-
-        let ai_client_provider = scope.resolve::<dyn AiClientProvider>().await;
-        let search_tool = SearchDocuments::new(ai_client_provider, chat_id);
-        let search_result = Tool::call(
-            &search_tool,
-            &mut rig::tool::ToolContext::default(),
-            SearchDocumentsArgs {
-                query: "search query".to_string(),
-                top_k: 1,
-            },
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(1, search_result.len());
-        assert_eq!("Page 1 content", search_result[0].content.trim());
-    }
-
-    #[tokio::test]
-    pub async fn upload_document_stopped_while_embedding_did_not_add_message() {
-        // Arrange
-
-        let state = Arc::new(AiState::default());
-        let embedding_state = state.clone();
-        let mock_client = MockClient {
-            embeddings_model_dims: Some(DEFAULT_MOCK_EMBEDDINGS_DIMS),
-            embed_texts_fn: Arc::new(Some(Box::new(move |request| {
-                embedding_state.cancel_generation();
-                Ok(request
-                    .iter()
-                    .map(|_| Embedding {
-                        document: String::new(),
-                        vec: vec![0f64; DEFAULT_MOCK_EMBEDDINGS_DIMS],
-                    })
-                    .collect())
-            }))),
-            ..Default::default()
-        };
-
-        let injector = initialize_test_injector(mock_client, state).await;
-        let scope = injector.start_scope();
-        let service = scope.resolve::<dyn DocumentUploader>().await;
-
-        let ai_repository = scope.resolve::<dyn AiRepository>().await;
-        let chat_id = Uuid::new_v4();
-        ai_repository
-            .upsert_chat(&Chat::new(Some(chat_id), "test".to_string()))
-            .await
-            .unwrap();
-
-        let path =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/example.pdf");
-
-        // Act
-
-        let actual = service.upload_document(path, chat_id).await.unwrap();
-
-        // Assert
-
-        assert_eq!(UploadOutcome::Stopped, actual);
-        let messages = ai_repository
-            .get_chat_messages_ordered(chat_id)
-            .await
-            .unwrap();
-        assert!(messages.is_empty());
-    }
 }

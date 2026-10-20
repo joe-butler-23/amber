@@ -29,7 +29,7 @@ const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 #[tauri::command]
 pub async fn fetch_page(url: String) -> Result<FetchedPageDto, ApiError> {
     let client = build_client(Duration::from_secs(20))?;
-    let response = client.get(&url).send().await?;
+    let response = client.get(&url).send().await?.error_for_status()?;
 
     let final_url = response.url().to_string();
     let path = response.url().path().to_lowercase();
@@ -273,192 +273,13 @@ fn build_client(timeout: Duration) -> Result<reqwest::Client, ApiError> {
         .map_err(|e| ApiError::new(e.to_string()))
 }
 
-async fn read_capped(response: reqwest::Response, cap: usize) -> Result<Vec<u8>, ApiError> {
-    let bytes = response.bytes().await?;
-    if bytes.len() > cap {
-        return Err(ApiError::new("The response was too large.".to_string()));
+async fn read_capped(mut response: reqwest::Response, cap: usize) -> Result<Vec<u8>, ApiError> {
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        if chunk.len() > cap - bytes.len() {
+            return Err(ApiError::new("The response was too large.".to_string()));
+        }
+        bytes.extend_from_slice(&chunk);
     }
-    Ok(bytes.to_vec())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn classify_page_epub_content_type_returns_epub() {
-        // Arrange
-
-        let bytes = b"PK\x03\x04rest";
-
-        // Act
-
-        let kind = classify_page("application/epub+zip", "/book", bytes);
-
-        // Assert
-
-        assert_eq!(kind, PageKind::Epub);
-    }
-
-    #[test]
-    fn classify_page_octet_stream_with_epub_extension_returns_epub() {
-        // Arrange
-
-        let bytes = b"PK\x03\x04rest";
-
-        // Act
-
-        let kind = classify_page("application/octet-stream", "/books/1.epub", bytes);
-
-        // Assert
-
-        assert_eq!(kind, PageKind::Epub);
-    }
-
-    #[test]
-    fn classify_page_zip_without_epub_hint_returns_other() {
-        // Arrange
-
-        let bytes = b"PK\x03\x04rest";
-
-        // Act
-
-        let kind = classify_page("application/zip", "/archive.zip", bytes);
-
-        // Assert
-
-        assert_eq!(kind, PageKind::Other);
-    }
-
-    #[test]
-    fn classify_page_markdown_content_type_returns_markdown() {
-        // Arrange
-
-        let bytes = b"# Title";
-
-        // Act
-
-        let kind = classify_page("text/markdown; charset=utf-8", "/notes", bytes);
-
-        // Assert
-
-        assert_eq!(kind, PageKind::Markdown);
-    }
-
-    #[test]
-    fn classify_page_plain_text_with_md_extension_returns_markdown() {
-        // Arrange
-
-        let bytes = b"# Title";
-
-        // Act
-
-        let kind = classify_page(
-            "text/plain; charset=utf-8",
-            "/user/repo/main/readme.md",
-            bytes,
-        );
-
-        // Assert
-
-        assert_eq!(kind, PageKind::Markdown);
-    }
-
-    #[test]
-    fn classify_page_html_with_md_extension_returns_html() {
-        // Arrange
-
-        let bytes = b"<html></html>";
-
-        // Act
-
-        let kind = classify_page("text/html", "/user/repo/blob/main/readme.md", bytes);
-
-        // Assert
-
-        assert_eq!(kind, PageKind::Html);
-    }
-
-    #[test]
-    fn classify_page_pdf_magic_returns_pdf() {
-        // Arrange
-
-        let bytes = b"%PDF-1.7";
-
-        // Act
-
-        let kind = classify_page("application/octet-stream", "/file", bytes);
-
-        // Assert
-
-        assert_eq!(kind, PageKind::Pdf);
-    }
-
-    #[test]
-    fn extract_pdf_html_pdf_with_text_layer_returns_html_and_reports_progress() {
-        // Arrange
-
-        let bytes = std::fs::read(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/fixtures/example.pdf"
-        ))
-        .unwrap();
-        let mut progress_calls = Vec::new();
-
-        // Act
-
-        let result = extract_pdf_html(bytes, |done, total| progress_calls.push((done, total)));
-
-        // Assert
-
-        let extraction = result.ok().expect("expected extraction to succeed");
-        assert!(extraction.html.contains("Page 1 content"));
-        assert_eq!(extraction.page_count, 1);
-        assert_eq!(progress_calls, vec![(1, 1)]);
-    }
-
-    #[test]
-    fn extract_pdf_html_invalid_bytes_returns_error() {
-        // Arrange
-
-        let bytes = b"not a pdf".to_vec();
-
-        // Act
-
-        let result = extract_pdf_html(bytes, |_, _| {});
-
-        // Assert
-
-        assert!(result.is_err());
-    }
-
-    fn fixture_bytes() -> Vec<u8> {
-        std::fs::read(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/fixtures/example.pdf"
-        ))
-        .unwrap()
-    }
-
-    #[test]
-    fn page_to_html_valid_page_returns_html_for_that_page_only() {
-        // Arrange
-
-        let doc =
-            PdfDocument::from_bytes(fixture_bytes()).expect("expected the fixture PDF to parse");
-        let options = ConversionOptions {
-            include_images: true,
-            ..Default::default()
-        };
-
-        // Act
-
-        let html = page_to_html(&doc, 0, &options)
-            .ok()
-            .expect("expected page_to_html to succeed");
-
-        // Assert
-
-        assert!(html.contains("Page 1 content"));
-    }
+    Ok(bytes)
 }

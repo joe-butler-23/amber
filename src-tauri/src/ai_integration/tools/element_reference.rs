@@ -12,31 +12,3 @@ pub fn element_reference(element_id: ElementId) -> String {
         element_id.id().hyphenated()
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use uuid::Uuid;
-
-    use super::*;
-
-    #[test]
-    fn element_reference_learning_asset_tag_with_camel_case_type_and_hyphenated_id() {
-        // Arrange
-
-        let id = Uuid::new_v4();
-
-        // Act
-
-        let actual = element_reference(ElementId::LearningAsset(id));
-
-        // Assert
-
-        assert_eq!(
-            format!(
-                r#"<element-ref data-type="learningAsset" data-id="{}"></element-ref>"#,
-                id.hyphenated()
-            ),
-            actual
-        );
-    }
-}

@@ -15,6 +15,31 @@ use crate::assets::utils::image_mime::sniff_image_mime;
 use crate::assets::value_objects::asset_id::AssetId;
 
 const MAX_IMAGE_BYTES: usize = 10 * 1024 * 1024;
+const MAX_ENTRY_BYTES: usize = 20 * 1024 * 1024;
+const MAX_EXPANDED_BYTES: usize = 128 * 1024 * 1024;
+
+struct EpubArchive {
+    zip: ZipArchive<Cursor<Vec<u8>>>,
+    remaining: usize,
+}
+
+impl EpubArchive {
+    fn read(&mut self, name: &str, cap: usize) -> Result<Option<Vec<u8>>, ApiError> {
+        let Ok(file) = self.zip.by_name(name) else {
+            return Ok(None);
+        };
+        let limit = self.remaining.min(cap);
+        let mut bytes = Vec::new();
+        file.take(limit as u64 + 1).read_to_end(&mut bytes)?;
+        if bytes.len() > limit {
+            return Err(ApiError::new(
+                "The expanded EPUB was too large.".to_string(),
+            ));
+        }
+        self.remaining -= bytes.len();
+        Ok(Some(bytes))
+    }
+}
 
 struct ManifestItem {
     href: String,
@@ -36,13 +61,16 @@ pub struct EpubExtraction {
 }
 
 pub fn extract_epub_html(bytes: Vec<u8>) -> Result<EpubExtraction, ApiError> {
-    let mut archive = ZipArchive::new(Cursor::new(bytes)).map_err(|_| invalid_epub_error())?;
+    let mut archive = EpubArchive {
+        zip: ZipArchive::new(Cursor::new(bytes)).map_err(|_| invalid_epub_error())?,
+        remaining: MAX_EXPANDED_BYTES,
+    };
 
     let container_xml =
-        read_entry_text(&mut archive, "META-INF/container.xml").ok_or_else(invalid_epub_error)?;
+        read_entry_text(&mut archive, "META-INF/container.xml")?.ok_or_else(invalid_epub_error)?;
     let opf_path = find_opf_path(&container_xml).ok_or_else(invalid_epub_error)?;
 
-    let opf_xml = read_entry_text(&mut archive, &opf_path).ok_or_else(invalid_epub_error)?;
+    let opf_xml = read_entry_text(&mut archive, &opf_path)?.ok_or_else(invalid_epub_error)?;
     let opf_dir = parent_dir(&opf_path);
 
     let package = parse_opf(&opf_xml).ok_or_else(invalid_epub_error)?;
@@ -66,7 +94,7 @@ pub fn extract_epub_html(bytes: Vec<u8>) -> Result<EpubExtraction, ApiError> {
             continue;
         };
         let chapter_path = resolve_path(&opf_dir, &item.href);
-        let Some(chapter_bytes) = read_entry_bytes(&mut archive, &chapter_path) else {
+        let Some(chapter_bytes) = archive.read(&chapter_path, MAX_ENTRY_BYTES)? else {
             continue;
         };
         let chapter_text = String::from_utf8_lossy(&chapter_bytes).into_owned();
@@ -78,7 +106,7 @@ pub fn extract_epub_html(bytes: Vec<u8>) -> Result<EpubExtraction, ApiError> {
             &mut archive,
             &resource_media_types,
             &mut images,
-        );
+        )?;
         html.push_str(&inlined);
         chapter_count += 1;
     }
@@ -258,10 +286,10 @@ fn expand_self_closing_tags(xhtml: &str) -> String {
 fn localize_images(
     html: &str,
     chapter_dir: &str,
-    archive: &mut ZipArchive<Cursor<Vec<u8>>>,
+    archive: &mut EpubArchive,
     resource_media_types: &HashMap<String, String>,
     images: &mut Vec<Asset>,
-) -> String {
+) -> Result<String, ApiError> {
     let html = replace_attr(
         html,
         "img",
@@ -270,7 +298,7 @@ fn localize_images(
         archive,
         resource_media_types,
         images,
-    );
+    )?;
     replace_attr(
         &html,
         "image",
@@ -287,10 +315,10 @@ fn replace_attr(
     tag: &str,
     attr: &str,
     chapter_dir: &str,
-    archive: &mut ZipArchive<Cursor<Vec<u8>>>,
+    archive: &mut EpubArchive,
     resource_media_types: &HashMap<String, String>,
     images: &mut Vec<Asset>,
-) -> String {
+) -> Result<String, ApiError> {
     let escaped_tag = regex::escape(tag);
     let escaped_attr = regex::escape(attr);
     let pattern = format!(
@@ -312,7 +340,7 @@ fn replace_attr(
 
         let decoded_href = percent_decode(&html_unescape(href));
         let resolved = resolve_path(chapter_dir, &decoded_href);
-        let replacement = match read_image(archive, &resolved, resource_media_types) {
+        let replacement = match read_image(archive, &resolved, resource_media_types)? {
             Some(EpubImage::Asset(asset)) => {
                 let src = asset.id.src();
                 if !images.iter().any(|image| image.id == asset.id) {
@@ -331,7 +359,7 @@ fn replace_attr(
     }
 
     result.push_str(&html[last_end..]);
-    result
+    Ok(result)
 }
 
 enum EpubImage {
@@ -341,42 +369,42 @@ enum EpubImage {
 }
 
 fn read_image(
-    archive: &mut ZipArchive<Cursor<Vec<u8>>>,
+    archive: &mut EpubArchive,
     path: &str,
     resource_media_types: &HashMap<String, String>,
-) -> Option<EpubImage> {
-    let bytes = read_entry_bytes(archive, path)?;
-    if bytes.is_empty() || bytes.len() > MAX_IMAGE_BYTES {
-        return None;
+) -> Result<Option<EpubImage>, ApiError> {
+    let Some(bytes) = archive.read(path, MAX_IMAGE_BYTES)? else {
+        return Ok(None);
+    };
+    if bytes.is_empty() {
+        return Ok(None);
     }
 
-    let mime_type = sniff_image_mime(&bytes)
+    let Some(mime_type) = sniff_image_mime(&bytes)
         .or_else(|| resource_media_types.get(path).cloned())
-        .filter(|mime| mime.starts_with("image/"))?;
+        .filter(|mime| mime.starts_with("image/"))
+    else {
+        return Ok(None);
+    };
 
     if mime_type == "image/svg+xml" {
-        return Some(EpubImage::InlineSvg(format!(
+        return Ok(Some(EpubImage::InlineSvg(format!(
             "data:image/svg+xml;base64,{}",
             general_purpose::STANDARD.encode(&bytes)
-        )));
+        ))));
     }
 
-    Some(EpubImage::Asset(Asset {
+    Ok(Some(EpubImage::Asset(Asset {
         id: AssetId::from_bytes(&bytes),
         mime_type,
         data: bytes,
-    }))
+    })))
 }
 
-fn read_entry_bytes(archive: &mut ZipArchive<Cursor<Vec<u8>>>, name: &str) -> Option<Vec<u8>> {
-    let mut file = archive.by_name(name).ok()?;
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf).ok()?;
-    Some(buf)
-}
-
-fn read_entry_text(archive: &mut ZipArchive<Cursor<Vec<u8>>>, name: &str) -> Option<String> {
-    read_entry_bytes(archive, name).map(|b| String::from_utf8_lossy(&b).into_owned())
+fn read_entry_text(archive: &mut EpubArchive, name: &str) -> Result<Option<String>, ApiError> {
+    Ok(archive
+        .read(name, MAX_ENTRY_BYTES)?
+        .map(|b| String::from_utf8_lossy(&b).into_owned()))
 }
 
 fn resolve_path(base_dir: &str, relative: &str) -> String {

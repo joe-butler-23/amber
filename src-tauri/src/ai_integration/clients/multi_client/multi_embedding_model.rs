@@ -1,30 +1,35 @@
 use rig::embeddings::EmbeddingModel;
-
-#[cfg(not(test))]
 use rig::providers::gemini;
-#[cfg(not(test))]
 use rig::providers::ollama;
-#[cfg(not(test))]
 use rig::providers::openai;
-#[cfg(not(test))]
 use rig::providers::openrouter;
 
-#[cfg(test)]
-use crate::ai_integration::clients::mock_client::MockClient;
 use crate::ai_integration::clients::multi_client::MultiClient;
 
 #[derive(Clone)]
-pub enum MultiEmbeddingModel {
-    #[cfg(not(test))]
+enum Model {
     Ollama(ollama::EmbeddingModel),
-    #[cfg(not(test))]
     OpenAI(openai::EmbeddingModel),
-    #[cfg(not(test))]
     OpenRouter(openrouter::EmbeddingModel),
-    #[cfg(not(test))]
     Gemini(gemini::embedding::EmbeddingModel),
-    #[cfg(test)]
-    Mock(MockClient),
+}
+
+#[derive(Clone)]
+pub struct MultiEmbeddingModel {
+    inner: Model,
+    name: String,
+}
+
+impl MultiEmbeddingModel {
+    pub fn identity(&self) -> (&'static str, &str) {
+        let provider = match &self.inner {
+            Model::Ollama(_) => "ollama",
+            Model::OpenAI(_) => "openai",
+            Model::OpenRouter(_) => "openrouter",
+            Model::Gemini(_) => "gemini",
+        };
+        (provider, &self.name)
+    }
 }
 
 impl EmbeddingModel for MultiEmbeddingModel {
@@ -33,42 +38,31 @@ impl EmbeddingModel for MultiEmbeddingModel {
     type Client = MultiClient;
 
     fn make(client: &Self::Client, model: impl Into<String>, dims: Option<usize>) -> Self {
-        match client {
-            #[cfg(not(test))]
+        let name = model.into();
+        let model = name.clone();
+        let inner = match client {
             MultiClient::Ollama(client) => {
-                MultiEmbeddingModel::Ollama(ollama::EmbeddingModel::make(client, model, dims))
+                Model::Ollama(ollama::EmbeddingModel::make(client, model, dims))
             }
-            #[cfg(not(test))]
-            MultiClient::OpenAI(client) => MultiEmbeddingModel::OpenAI(
-                openai::EmbeddingModel::new(client.clone(), model, dims.unwrap_or(0)),
-            ),
-            #[cfg(not(test))]
-            MultiClient::OpenRouter(client) => MultiEmbeddingModel::OpenRouter(
-                openrouter::EmbeddingModel::make(client, model, dims),
-            ),
-            #[cfg(not(test))]
-            MultiClient::Gemini(client) => MultiEmbeddingModel::Gemini(
-                gemini::embedding::EmbeddingModel::make(client, model, dims),
-            ),
-            #[cfg(test)]
-            MultiClient::Mock(client) => {
-                MultiEmbeddingModel::Mock(<MockClient as EmbeddingModel>::make(client, model, dims))
+            MultiClient::OpenAI(client) => {
+                Model::OpenAI(openai::EmbeddingModel::make(client, model, dims))
             }
-        }
+            MultiClient::OpenRouter(client) => {
+                Model::OpenRouter(openrouter::EmbeddingModel::make(client, model, dims))
+            }
+            MultiClient::Gemini(client) => {
+                Model::Gemini(gemini::embedding::EmbeddingModel::make(client, model, dims))
+            }
+        };
+        Self { inner, name }
     }
 
     fn ndims(&self) -> usize {
-        match self {
-            #[cfg(not(test))]
-            Self::Ollama(embedding_model) => embedding_model.ndims(),
-            #[cfg(not(test))]
-            Self::OpenAI(embedding_model) => embedding_model.ndims(),
-            #[cfg(not(test))]
-            Self::OpenRouter(embedding_model) => embedding_model.ndims(),
-            #[cfg(not(test))]
-            Self::Gemini(embedding_model) => embedding_model.ndims(),
-            #[cfg(test)]
-            MultiEmbeddingModel::Mock(embedding_model) => embedding_model.ndims(),
+        match &self.inner {
+            Model::Ollama(embedding_model) => embedding_model.ndims(),
+            Model::OpenAI(embedding_model) => embedding_model.ndims(),
+            Model::OpenRouter(embedding_model) => embedding_model.ndims(),
+            Model::Gemini(embedding_model) => embedding_model.ndims(),
         }
     }
 
@@ -76,17 +70,11 @@ impl EmbeddingModel for MultiEmbeddingModel {
         &self,
         texts: impl IntoIterator<Item = String> + rig::wasm_compat::WasmCompatSend,
     ) -> Result<Vec<rig::embeddings::Embedding>, rig::embeddings::EmbeddingError> {
-        match self {
-            #[cfg(not(test))]
-            Self::Ollama(embedding_model) => embedding_model.embed_texts(texts).await,
-            #[cfg(not(test))]
-            Self::OpenAI(embedding_model) => embedding_model.embed_texts(texts).await,
-            #[cfg(not(test))]
-            Self::OpenRouter(embedding_model) => embedding_model.embed_texts(texts).await,
-            #[cfg(not(test))]
-            Self::Gemini(embedding_model) => embedding_model.embed_texts(texts).await,
-            #[cfg(test)]
-            MultiEmbeddingModel::Mock(embedding_model) => embedding_model.embed_texts(texts).await,
+        match &self.inner {
+            Model::Ollama(embedding_model) => embedding_model.embed_texts(texts).await,
+            Model::OpenAI(embedding_model) => embedding_model.embed_texts(texts).await,
+            Model::OpenRouter(embedding_model) => embedding_model.embed_texts(texts).await,
+            Model::Gemini(embedding_model) => embedding_model.embed_texts(texts).await,
         }
     }
 }

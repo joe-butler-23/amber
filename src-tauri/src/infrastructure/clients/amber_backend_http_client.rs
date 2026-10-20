@@ -15,7 +15,7 @@ use prost::Message;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{RetryError, RetryTransientMiddleware, policies::ExponentialBackoff};
 use tauri_plugin_http::reqwest::{
-    Response, StatusCode, Url,
+    Method, Response, StatusCode, Url,
     header::{CONTENT_TYPE, HeaderValue},
 };
 
@@ -44,17 +44,15 @@ impl AmberBackendHttpClient {
             log::info!("The application was not able to load a stored authentication token.")
         }
 
-        let reqwest_client = tauri_plugin_http::reqwest::Client::builder().build();
-
-        if let Err(err) = reqwest_client {
-            return Err(err.to_string());
-        }
+        let reqwest_client = tauri_plugin_http::reqwest::Client::builder()
+            .build()
+            .map_err(|err| err.to_string())?;
 
         let retry_policy = ExponentialBackoff::builder()
             .retry_bounds(Duration::from_secs(2), Duration::from_secs(30))
             .build_with_max_retries(3);
 
-        let client_with_middleware = ClientBuilder::new(reqwest_client.unwrap())
+        let client_with_middleware = ClientBuilder::new(reqwest_client)
             .with(RetryTransientMiddleware::new_with_policy(retry_policy))
             .build();
 
@@ -66,8 +64,11 @@ impl AmberBackendHttpClient {
         })
     }
 
-    /// Attaches the currently stored bearer token, if any, to `builder`.
-    fn authorize(&self, builder: RequestBuilder) -> RequestBuilder {
+    /// Every authenticated endpoint uses the same URL and bearer-token boundary.
+    fn request(&self, method: Method, path: &str) -> RequestBuilder {
+        let builder = self
+            .reqwest_client
+            .request(method, self.backend_url.join(path).unwrap());
         let token = self.auth_token.lock().unwrap().clone();
         match token {
             Some(token) => builder.bearer_auth(token),
@@ -210,10 +211,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
     async fn sign_out(&self) -> Result<(), AmberBackendClientError> {
         log::info!("Signing-out...");
         let response = self
-            .authorize(
-                self.reqwest_client
-                    .post(self.backend_url.join("/api/v1/auth/sign-out").unwrap()),
-            )
+            .request(Method::POST, "/api/v1/auth/sign-out")
             .send()
             .await;
         let result = ensure_success_response(response).await;
@@ -236,17 +234,14 @@ impl AmberBackendClient for AmberBackendHttpClient {
         &self,
         verification_code: String,
     ) -> Result<(), AmberBackendClientError> {
-        log::info!("Verifying email with code '{verification_code}'");
+        log::info!("Verifying email");
 
         let dto = VerifyEmailDto {
             email_verification_code: verification_code,
         };
 
         let response = self
-            .authorize(
-                self.reqwest_client
-                    .post(self.backend_url.join("/api/v1/auth/verify-email").unwrap()),
-            )
+            .request(Method::POST, "/api/v1/auth/verify-email")
             .json(&dto)
             .send()
             .await;
@@ -259,13 +254,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
 
     async fn resend_email_verification_code(&self) -> Result<(), AmberBackendClientError> {
         let response = self
-            .authorize(
-                self.reqwest_client.post(
-                    self.backend_url
-                        .join("/api/v1/auth/resend-verification")
-                        .unwrap(),
-                ),
-            )
+            .request(Method::POST, "/api/v1/auth/resend-verification")
             .send()
             .await;
 
@@ -274,13 +263,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
     }
 
     async fn get_user_information(&self) -> Result<UserInformationDto, AmberBackendClientError> {
-        let response = self
-            .authorize(
-                self.reqwest_client
-                    .get(self.backend_url.join("/api/v1/user").unwrap()),
-            )
-            .send()
-            .await;
+        let response = self.request(Method::GET, "/api/v1/user").send().await;
 
         let response = self.ensure_authorized_success(response).await?;
         match response.json::<UserInformationDto>().await {
@@ -311,10 +294,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
 
         log::info!("Updating user information...");
         let response = self
-            .authorize(
-                self.reqwest_client
-                    .patch(self.backend_url.join("/api/v1/user").unwrap()),
-            )
+            .request(Method::PATCH, "/api/v1/user")
             .json(&dto)
             .send()
             .await;
@@ -327,13 +307,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
     async fn delete_user(&self) -> Result<(), AmberBackendClientError> {
         log::info!("Deleting user email.");
 
-        let response = self
-            .authorize(
-                self.reqwest_client
-                    .delete(self.backend_url.join("/api/v1/user").unwrap()),
-            )
-            .send()
-            .await;
+        let response = self.request(Method::DELETE, "/api/v1/user").send().await;
 
         self.ensure_authorized_success(response).await?;
         self.clear_auth_token().await?;
@@ -345,13 +319,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
         log::info!("Updating user password.");
 
         let response = self
-            .authorize(
-                self.reqwest_client.post(
-                    self.backend_url
-                        .join("/api/v1/auth/update-password")
-                        .unwrap(),
-                ),
-            )
+            .request(Method::POST, "/api/v1/auth/update-password")
             .json(&dto)
             .send()
             .await;
@@ -366,10 +334,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
         log::info!("Pushing {} local change(s)...", batch.cells.len());
 
         let response = self
-            .authorize(
-                self.reqwest_client
-                    .post(self.backend_url.join("/api/v1/sync/push").unwrap()),
-            )
+            .request(Method::POST, "/api/v1/sync/push")
             .header(
                 CONTENT_TYPE,
                 HeaderValue::from_static(PROTOBUF_CONTENT_TYPE),
@@ -391,10 +356,7 @@ impl AmberBackendClient for AmberBackendHttpClient {
         log::info!("Pulling changes since server seq {since_server_seq}...");
 
         let response = self
-            .authorize(
-                self.reqwest_client
-                    .get(self.backend_url.join("/api/v1/sync/pull").unwrap()),
-            )
+            .request(Method::GET, "/api/v1/sync/pull")
             .query(&[("sinceServerSeq", since_server_seq)])
             .send()
             .await;
