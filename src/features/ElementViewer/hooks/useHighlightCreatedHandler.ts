@@ -17,7 +17,6 @@ import {
 } from "../../../stores/elements/elementsActions";
 import { ElementId } from "../../../types/elements/elementId";
 import { truncateToWords } from "../../../utils/truncateToWords";
-import { CLOZE_COLOR } from "./useElementViewerButtons";
 
 export function useHighlightCreatedHandler(elementId: ElementId | undefined) {
 	const dispatch = useAppDispatch();
@@ -26,21 +25,19 @@ export function useHighlightCreatedHandler(elementId: ElementId | undefined) {
 		({
 			id,
 			selectionNodes,
-			fullNodes,
+			cloze,
 			selectionText,
-			fullText,
-			color,
 		}: HighlightCreatedPayload) => {
-			if (color === CLOZE_COLOR) {
+			if (cloze) {
 				void dispatch(
 					createCardAction({
 						id,
 						meta: {
-							name: truncateToWords(fullText),
+							name: truncateToWords(cloze.text),
 							parent: elementId!,
 							origin: { type: "inherited" },
 						},
-						front: serializedNodesToLexicalJson(fullNodes, () => {
+						front: serializedNodesToLexicalJson(cloze.nodes, () => {
 							$stripOtherHighlights(id);
 							$buildClozeFront(id);
 						}),

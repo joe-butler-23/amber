@@ -11,7 +11,10 @@ import {
 import { $unwrapMarkNode } from "@lexical/mark";
 import { $dfs } from "@lexical/utils";
 import { FloatingMenuItem } from "../../../components/Editor/plugins/FloatingMenuPlugin";
-import { CREATE_HIGHLIGHT_COMMAND } from "../../../components/Editor/plugins/HighlightPlugin/highlightCommands";
+import {
+	CREATE_HIGHLIGHT_COMMAND,
+	HIGHLIGHT_COLORS,
+} from "../../../components/Editor/plugins/HighlightPlugin/highlightCommands";
 import {
 	$isHighlightNode,
 	HighlightNode,
@@ -38,8 +41,6 @@ import {
 	OPEN_HIGHLIGHT_BUTTON,
 	REMOVE_HIGHLIGHT_BUTTON,
 } from "../highlightFloatingMenuButtons";
-
-export const CLOZE_COLOR = "blue";
 
 function $getHighlightNodeFromSelection(selection: RangeSelection) {
 	for (const node of selection.getNodes()) {
@@ -78,7 +79,8 @@ function selectedText(editor: LexicalEditor): string | null {
 
 function highlightElementId(highlightNode: HighlightNode): ElementId {
 	return {
-		type: highlightNode.getColor() === CLOZE_COLOR ? "card" : "extract",
+		type:
+			highlightNode.getColor() === HIGHLIGHT_COLORS.cloze ? "card" : "extract",
 		id: highlightNode.getHighlightId(),
 	};
 }
@@ -152,17 +154,14 @@ export function useElementViewerButtons() {
 				...EXTRACT_BUTTON,
 				isActive: () => false,
 				onClick: editor => {
-					editor.dispatchCommand(CREATE_HIGHLIGHT_COMMAND, "yellow");
+					editor.dispatchCommand(CREATE_HIGHLIGHT_COMMAND, "extract");
 				},
 			},
 			{
 				...CLOZE_BUTTON,
 				isActive: () => false,
 				onClick: editor => {
-					editor.dispatchCommand(
-						CREATE_HIGHLIGHT_COMMAND,
-						CLOZE_COLOR,
-					);
+					editor.dispatchCommand(CREATE_HIGHLIGHT_COMMAND, "cloze");
 				},
 			},
 			...(aiEnabled

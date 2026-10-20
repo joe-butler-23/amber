@@ -12,6 +12,7 @@ import { type SerializedLexicalNodeTree } from "../../lexicalJsonConversion";
 import { $createHighlightNode, HighlightNode } from "./HighlightNode";
 import {
 	CREATE_HIGHLIGHT_COMMAND,
+	HIGHLIGHT_COLORS,
 	HighlightCreatedPayload,
 } from "./highlightCommands";
 import { $trimSelectionWhitespace } from "./trimSelectionWhitespace";
@@ -31,7 +32,8 @@ export function HighlightPlugin({ onHighlightCreated }: Props) {
 		}
 		return editor.registerCommand(
 			CREATE_HIGHLIGHT_COMMAND,
-			color => {
+			action => {
+				const color = HIGHLIGHT_COLORS[action];
 				const selection = $getSelection();
 				if (!$isRangeSelection(selection) || selection.isCollapsed()) {
 					return false;
@@ -62,23 +64,22 @@ export function HighlightPlugin({ onHighlightCreated }: Props) {
 					id,
 					ids => $createHighlightNode(ids, color),
 				);
-				// A `null` selection tells $generateJSONFromSelectedNodes to
-				// include every node, i.e. the whole document — read live from
-				// the active (not-yet-committed) update, unlike
-				// `editor.getEditorState()`.
-				const { nodes: fullNodes } =
-					$generateJSONFromSelectedNodes<SerializedLexicalNodeTree>(
-						editor,
-						null,
-					);
-				const fullText = $getRoot().getTextContent();
+				// Read live after wrapping; a committed editor state would miss the mark.
+				const cloze =
+					action === "cloze"
+						? {
+							nodes: $generateJSONFromSelectedNodes<SerializedLexicalNodeTree>(
+								editor,
+								null,
+							).nodes,
+							text: $getRoot().getTextContent(),
+						}
+						: undefined;
 				onHighlightCreated?.({
 					id,
 					selectionNodes,
-					fullNodes,
+					cloze,
 					selectionText,
-					fullText,
-					color,
 					endBlockIndex,
 				});
 				return true;

@@ -1,22 +1,18 @@
 import { createCommand } from "lexical";
-import { type MantineColor } from "@mantine/core";
 import { type SerializedLexicalNodeTree } from "../../lexicalJsonConversion";
 
-export const CREATE_HIGHLIGHT_COMMAND = createCommand<MantineColor>(
-	"CREATE_HIGHLIGHT_COMMAND",
-);
+export const HIGHLIGHT_COLORS = { extract: "yellow", cloze: "blue" } as const;
+
+export const CREATE_HIGHLIGHT_COMMAND =
+	createCommand<keyof typeof HIGHLIGHT_COLORS>("CREATE_HIGHLIGHT_COMMAND");
 
 export interface HighlightCreatedPayload {
 	id: string;
 	/** Serialized nodes of just the selected range, before wrapping. */
 	selectionNodes: SerializedLexicalNodeTree[];
-	/** Serialized nodes of the entire document, after wrapping the selection in the highlight. */
-	fullNodes: SerializedLexicalNodeTree[];
-	/** Plain text of just the selected range. */
 	selectionText: string;
-	/** Plain text of the entire document, after wrapping the selection in the highlight. */
-	fullText: string;
-	color: MantineColor;
-	/** Index, among the editor root's top-level children, of the block containing the end of the selection. */
+	/** Only clozes need the whole document, after wrapping the selection. */
+	cloze?: { nodes: SerializedLexicalNodeTree[]; text: string };
+	/** Index of the top-level block containing the end of the selection. */
 	endBlockIndex: number;
 }
