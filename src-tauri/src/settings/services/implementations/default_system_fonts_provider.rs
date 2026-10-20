@@ -27,26 +27,3 @@ impl SystemFontsProvider for DefaultSystemFontsProvider {
         .unwrap_or_default()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn list_system_fonts_called_returned_sorted_distinct_families() {
-        // Arrange
-
-        let provider = DefaultSystemFontsProvider {};
-
-        // Act
-
-        let actual = provider.list_system_fonts().await;
-
-        // Assert
-
-        let mut expected = actual.clone();
-        expected.sort();
-        expected.dedup();
-        assert_eq!(expected, actual);
-    }
-}

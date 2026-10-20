@@ -9,10 +9,6 @@ use crate::trash::value_objects::trashed_element::TrashedElement;
 
 pub const DEFAULT_TRASH_RETENTION_DAYS: u32 = 30;
 
-/// How often the background task looks for trashed elements that are past the
-/// retention threshold.
-pub const TIME_BETWEEN_TRASH_PURGES_IN_MINUTES: u64 = 12 * 60;
-
 #[async_trait]
 pub trait TrashService: Send + Sync {
     /// Moves the element and its subtree to the trash. Descendants already
@@ -36,7 +32,7 @@ pub trait TrashService: Send + Sync {
 
     /// Permanently deletes trash roots older than `retention_days`. Returns
     /// the number of roots purged.
-    async fn purge_expired(&self, retention_days: u32) -> Result<usize, TrashServiceError>;
+    async fn purge_expired(&self, retention_days: u32) -> Result<usize, RepositoryError>;
 }
 
 #[derive(Debug, Error)]

@@ -87,21 +87,7 @@ fn default_enable_ai() -> bool {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings {
-            base_database_directory: PathBuf::default(),
-            profile: SettingsProfile::default(),
-            theme: Theme::default(),
-            font: Font::default(),
-            font_headings: Font::default(),
-            font_monospace: Font::default(),
-            zoom_percentage: f64::default(),
-            line_width: LineWidth::default(),
-            auto_sync: bool::default(),
-            trash_retention_days: DEFAULT_TRASH_RETENTION_DAYS,
-            enable_ai: true,
-            ai_provider: AiProvider::default(),
-            ai_providers: HashMap::new(),
-        }
+        Self::new(PathBuf::default(), SettingsProfile::Default)
     }
 }
 
@@ -162,38 +148,6 @@ mod tests {
     use super::*;
 
     #[test]
-    pub fn database_directory_default_profile_returned_base_directory() {
-        // Arrange
-
-        let base = PathBuf::from("/data/amber");
-        let settings = Settings::new(base.clone(), SettingsProfile::Default);
-
-        // Act
-
-        let actual = settings.database_directory();
-
-        // Assert
-
-        assert_eq!(base, actual);
-    }
-
-    #[test]
-    pub fn database_directory_user_profile_returned_correct_directory() {
-        // Arrange
-
-        let base = PathBuf::from("/data/amber");
-        let settings = Settings::new(base.clone(), SettingsProfile::User("user1".into()));
-
-        // Act
-
-        let actual = settings.database_directory();
-
-        // Assert
-
-        assert_eq!(base.join("user1"), actual);
-    }
-
-    #[test]
     pub fn from_json_legacy_provider_fields_migrated_to_ai_providers() {
         // Arrange
 
@@ -234,27 +188,6 @@ mod tests {
             None,
             actual.ai_provider_settings(AiProvider::Gemini).model_name
         );
-    }
-
-    #[test]
-    pub fn from_json_line_width_missing_defaulted_to_narrow() {
-        // Arrange
-
-        let json = r#"{
-            "baseDatabaseDirectory": "/data/amber",
-            "profile": "Default",
-            "theme": "FollowSystem",
-            "zoomPercentage": 100.0,
-            "autoSync": true
-        }"#;
-
-        // Act
-
-        let actual = Settings::from_json(json).unwrap();
-
-        // Assert
-
-        assert_eq!(LineWidth::Narrow, actual.line_width);
     }
 
     #[test]

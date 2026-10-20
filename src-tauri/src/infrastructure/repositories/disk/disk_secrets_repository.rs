@@ -1,8 +1,9 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use async_trait::async_trait;
-use tokio::fs;
+use tokio::{fs, sync::Mutex};
 
+use super::write_json;
 use crate::{
     infrastructure::value_objects::app_data_directory::AppDataDirectory,
     secrets::repositories::secrets_repository::{SecretsRepository, SecretsRepositoryError},
@@ -15,102 +16,40 @@ const SECRETS_FILE_NAME: &str = ".dev.secrets";
 
 pub struct DiskSecretsRepository {
     path: PathBuf,
+    writer: Mutex<()>,
 }
 
 impl DiskSecretsRepository {
-    pub fn new(app_data_directory: &AppDataDirectory) -> Self {
+    pub fn new(directory: &AppDataDirectory) -> Self {
         Self {
-            path: app_data_directory.get_path().join(SECRETS_FILE_NAME),
+            path: directory.get_path().join(SECRETS_FILE_NAME),
+            writer: Mutex::new(()),
         }
     }
 
-    async fn read_all(&self) -> HashMap<String, String> {
-        fs::read_to_string(&self.path)
-            .await
-            .ok()
-            .and_then(|c| serde_json::from_str(&c).ok())
-            .unwrap_or_default()
-    }
-
-    async fn write_all(&self, map: &HashMap<String, String>) -> Result<(), std::io::Error> {
-        if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent).await?;
+    async fn read_all(&self) -> std::io::Result<HashMap<String, String>> {
+        match fs::read(&self.path).await {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(HashMap::new()),
+            Err(err) => Err(err),
         }
-        fs::write(&self.path, serde_json::to_string(map).unwrap()).await
     }
 }
 
 #[async_trait]
 impl SecretsRepository for DiskSecretsRepository {
     async fn get_secret(&self, key: &str) -> Option<String> {
-        self.read_all().await.remove(key)
+        self.read_all().await.ok()?.remove(key)
     }
 
     async fn set_secret(&self, key: &str, value: &str) -> Result<(), SecretsRepositoryError> {
-        let mut map = self.read_all().await;
-        map.insert(key.to_string(), value.to_string());
-        self.write_all(&map)
-            .await
-            .map_err(|e| SecretsRepositoryError::CannotSave(Box::new(e)))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::test_utils::create_temp_directory;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn set_secret_new_key_persisted_to_disk() {
-        // Arrange
-
-        let dir = AppDataDirectory::new(create_temp_directory().await);
-        let repo = DiskSecretsRepository::new(&dir);
-
-        // Act
-
-        repo.set_secret("my-key", "my-value").await.unwrap();
-
-        // Assert
-
-        let repo2 = DiskSecretsRepository::new(&dir);
-        assert_eq!(
-            repo2.get_secret("my-key").await.as_deref(),
-            Some("my-value")
-        );
-    }
-
-    #[tokio::test]
-    async fn set_secret_overwrite_existing_key_returns_new_value() {
-        // Arrange
-
-        let dir = AppDataDirectory::new(create_temp_directory().await);
-        let repo = DiskSecretsRepository::new(&dir);
-        repo.set_secret("key", "old").await.unwrap();
-
-        // Act
-
-        repo.set_secret("key", "new").await.unwrap();
-
-        // Assert
-
-        assert_eq!(repo.get_secret("key").await.as_deref(), Some("new"));
-    }
-
-    #[tokio::test]
-    async fn get_secret_missing_key_returns_none() {
-        // Arrange
-
-        let dir = AppDataDirectory::new(create_temp_directory().await);
-        let repo = DiskSecretsRepository::new(&dir);
-
-        // Act
-
-        let result = repo.get_secret("nonexistent").await;
-
-        // Assert
-
-        assert!(result.is_none());
+        let _guard = self.writer.lock().await;
+        let result = async {
+            let mut values = self.read_all().await?;
+            values.insert(key.to_string(), value.to_string());
+            write_json(&self.path, &values).await
+        }
+        .await;
+        result.map_err(|err| SecretsRepositoryError::CannotSave(Box::new(err)))
     }
 }

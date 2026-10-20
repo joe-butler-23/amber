@@ -2,9 +2,11 @@ use std::sync::Arc;
 
 use tauri::State;
 
+use crate::backend::clients::amber_backend_client::AmberBackendClient;
 use crate::common::api_error::ApiError;
 use crate::elements::value_objects::element_id::ElementId;
 use crate::infrastructure::extensions::unit_of_work::UnitOfWorkExt;
+use crate::settings::repositories::settings_repository::SettingsRepository;
 use crate::trash::dto::trashed_element_dto::TrashedElementResponseDto;
 use crate::trash::services::trash_service::TrashService;
 use injector::injector::Injector;
@@ -59,11 +61,24 @@ pub async fn get_trash(
     injector: State<'_, Arc<Injector>>,
 ) -> Result<Vec<TrashedElementResponseDto>, ApiError> {
     let scope = injector.start_scope();
-    let trashed = scope
-        .resolve::<dyn TrashService>()
-        .await
-        .list_trash()
-        .await?;
+    let service = scope.resolve::<dyn TrashService>().await;
+    if matches!(
+        scope
+            .resolve::<dyn AmberBackendClient>()
+            .await
+            .is_signed_in(),
+        Ok(false)
+    ) {
+        let days = scope
+            .resolve::<dyn SettingsRepository>()
+            .await
+            .get_settings()
+            .await
+            .trash_retention_days;
+        service.purge_expired(days).await?;
+        scope.save_changes().await?;
+    }
+    let trashed = service.list_trash().await?;
     Ok(trashed
         .into_iter()
         .map(TrashedElementResponseDto::from)
