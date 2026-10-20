@@ -58,6 +58,7 @@ export function usePdfReadPoint({
 	);
 
 	const onContentUpdate = useAutoSave(
+		`read-point:${learningAssetId}`,
 		content =>
 			updateReadPoint({
 				learningAssetId,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { notifications } from "@mantine/notifications";
 import { AUTO_SAVE_DELAY_IN_MILLISECONDS } from "../../../config/constants";
 import {
@@ -50,11 +50,14 @@ function saveInBackground() {
 }
 
 export default function useAutoSave(
+	key: string,
 	onSave: (content: string) => Promise<void>,
 	initial?: string,
 ) {
-	const id = useId();
-	const acknowledged = useRef(initial);
+	const acknowledged = useRef({
+		key,
+		content: pending.has(key) ? undefined : initial,
+	});
 	const saveRef = useRef(onSave);
 	useEffect(() => {
 		saveRef.current = onSave;
@@ -80,13 +83,20 @@ export default function useAutoSave(
 
 	return useCallback(
 		(read: () => string | Promise<string>) => {
+			if (acknowledged.current.key !== key) {
+				acknowledged.current = {
+					key,
+					content: pending.has(key) ? undefined : initial,
+				};
+			}
+			const saved = acknowledged.current;
 			const save = saveRef.current;
-			pending.set(id, {
+			pending.set(key, {
 				read,
 				save: async content => {
-					if (content === acknowledged.current) return;
+					if (content === saved.content) return;
 					await save(content);
-					acknowledged.current = content;
+					saved.content = content;
 				},
 			});
 			clearTimeout(timeout);
@@ -95,6 +105,6 @@ export default function useAutoSave(
 				AUTO_SAVE_DELAY_IN_MILLISECONDS,
 			);
 		},
-		[id],
+		[key, initial],
 	);
 }

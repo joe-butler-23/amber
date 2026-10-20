@@ -31,7 +31,6 @@ export default function ElementContentView({
 	buttons,
 	onHighlightCreated,
 }: Props) {
-	const saved = useRef(element);
 	const editorRef = useRef<LexicalEditor | null>(null);
 	const studying = useAppSelector(selectStudyStatus) === "studying";
 	const question = useAppSelector(selectStudyCardPhase) === "question";
@@ -47,15 +46,9 @@ export default function ElementContentView({
 	const containerProps = useLineWidthContainerProps();
 
 	async function save(field: "front" | "back" | "content", content: string) {
-		const next = { ...saved.current, [field]: content };
-		if ("front" in next)
-			await updateCard({
-				id: next.meta.elementId.id,
-				front: next.front,
-				back: next.back,
-			});
-		else await updateExtract({ id: next.meta.elementId.id, content });
-		saved.current = next;
+		const id = element.meta.elementId.id;
+		if (field === "content") await updateExtract({ id, content });
+		else await updateCard({ id, [field]: content });
 	}
 
 	return (
@@ -83,6 +76,7 @@ export default function ElementContentView({
 							</Text>
 						) : (
 							<ElementEditor
+								saveKey={`${element.meta.elementId.type}:${element.meta.elementId.id}:${field}`}
 								initialContent={
 									field === "content"
 										? (element as ExtractResponseDto)

@@ -28,6 +28,7 @@ export interface ElementEditorSearchProps {
 }
 
 interface ElementEditorProps {
+	saveKey: string;
 	initialContent: string;
 	buttons: FloatingMenuItem[];
 	onHighlightCreated?: (payload: HighlightCreatedPayload) => void;
@@ -47,6 +48,7 @@ interface ElementEditorProps {
 }
 
 export default function ElementEditor({
+	saveKey,
 	initialContent,
 	buttons,
 	onHighlightCreated,
@@ -59,7 +61,7 @@ export default function ElementEditor({
 	editorRef,
 }: ElementEditorProps) {
 	const imageMenuItems = useImageOcclusionMenuItems();
-	const onContentUpdate = useAutoSave(onChange, initialContent);
+	const onContentUpdate = useAutoSave(saveKey, onChange, initialContent);
 
 	// Serializing the whole document to JSON is expensive on large
 	// documents, so it is deferred to save time instead of running on

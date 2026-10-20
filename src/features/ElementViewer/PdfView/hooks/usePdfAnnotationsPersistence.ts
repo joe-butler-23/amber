@@ -37,8 +37,10 @@ export function usePdfAnnotationsPersistence(
 	learningAssetId: string,
 ) {
 	const { provides: annotation } = useAnnotationCapability();
-	const onContentUpdate = useAutoSave(highlightsJson =>
-		updatePdfHighlights({ learningAssetId, highlightsJson }),
+	const onContentUpdate = useAutoSave(
+		`pdf-highlights:${learningAssetId}`,
+		highlightsJson =>
+			updatePdfHighlights({ learningAssetId, highlightsJson }),
 	);
 
 	useEffect(() => {

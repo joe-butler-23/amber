@@ -134,6 +134,7 @@ export default function SplitSlot({
 					<SplitPlaceholder height={height} />
 				) : (
 					<ElementEditor
+						saveKey={`split:${learningAssetId}:${seq}`}
 						initialContent={content}
 						buttons={buttons}
 						onChange={handleChange}

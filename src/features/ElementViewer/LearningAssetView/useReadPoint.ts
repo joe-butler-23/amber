@@ -123,6 +123,7 @@ export function useReadPoint({
 	);
 
 	const onContentUpdate = useAutoSave(
+		`read-point:${learningAssetId}`,
 		content =>
 			updateReadPoint({
 				learningAssetId,

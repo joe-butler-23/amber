@@ -1,5 +1,5 @@
 export interface UpdateCardDto {
 	id: string;
-	front: string;
-	back: string;
+	front?: string;
+	back?: string;
 }
