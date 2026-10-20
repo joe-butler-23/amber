@@ -9,7 +9,6 @@ mod elements;
 mod image_occlusion;
 mod import;
 mod infrastructure;
-mod local_configurations;
 mod saved_searches;
 mod search;
 mod secrets;

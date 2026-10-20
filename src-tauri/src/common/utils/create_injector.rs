@@ -9,8 +9,6 @@ use crate::ai_integration::repositories::ai_prompt_repository::AiPromptRepositor
 use crate::ai_integration::repositories::ai_repository::AiRepository;
 use crate::ai_integration::services::ai_prompt_service::AiPromptService;
 use crate::ai_integration::services::chat_brancher::ChatBrancher;
-use crate::ai_integration::services::implementations::default_chat_brancher::DefaultChatBrancher;
-use crate::ai_integration::services::implementations::default_ai_prompt_service::DefaultAiPromptService;
 use crate::ai_integration::services::agent_provider::AgentProvider;
 use crate::ai_integration::services::ai_client_provider::AiClientProvider;
 use crate::ai_integration::services::ai_streamer::AiStreamer;
@@ -18,13 +16,7 @@ use crate::ai_integration::services::tools_provider::ToolsProvider;
 use crate::ai_integration::services::tool_approval_resolver::ToolApprovalResolver;
 use crate::ai_integration::services::chat_creator::ChatCreator;
 use crate::ai_integration::services::document_uploader::DocumentUploader;
-use crate::ai_integration::services::implementations::default_agent_provider::DefaultAgentProvider;
-use crate::ai_integration::services::implementations::default_ai_client_provider::DefaultAiClientProvider;
-use crate::ai_integration::services::implementations::default_ai_streamer::DefaultAiStreamer;
 use crate::ai_integration::services::implementations::default_tools_provider::DefaultToolsProvider;
-use crate::ai_integration::services::implementations::default_tool_approval_resolver::DefaultToolApprovalResolver;
-use crate::ai_integration::services::implementations::default_chat_creator::DefaultChatCreator;
-use crate::ai_integration::services::implementations::default_document_uploader::DefaultDocumentUploader;
 use crate::assets::repositories::asset_repository::AssetRepository;
 use crate::assets::services::asset_service::AssetService;
 use crate::assets::services::implementations::default_asset_service::DefaultAssetService;
@@ -94,7 +86,6 @@ use crate::infrastructure::repositories::sqlite::sqlite_trash_repository::Sqlite
 use crate::infrastructure::value_objects::app_data_directory::AppDataDirectory;
 use crate::infrastructure::value_objects::db_pool::DbPool;
 use crate::infrastructure::value_objects::db_transaction::DbTransaction;
-use crate::local_configurations::repositories::local_configuration_repository::LocalConfigurationRepository;
 use crate::secrets::repositories::secrets_repository::SecretsRepository;
 use crate::settings::entities::settings::Settings;
 use crate::settings::repositories::settings_repository::SettingsRepository;
@@ -236,11 +227,7 @@ pub async fn create_injector<R: tauri::Runtime>(
 
     // Local configuration
 
-    register_scope!(
-        injector,
-        dyn LocalConfigurationRepository,
-        SqliteLocalConfigurationRepository
-    );
+    register_scope!(injector, SqliteLocalConfigurationRepository);
 
     // Sync
 
@@ -430,19 +417,15 @@ pub async fn create_injector<R: tauri::Runtime>(
     injector.register_singleton(Arc::new(AiState::default()));
     register_scope!(injector, dyn AiRepository, SqliteAiRepository);
     register_scope!(injector, dyn AiPromptRepository, SqliteAiPromptRepository);
-    register_scope!(injector, dyn AiPromptService, DefaultAiPromptService);
-    register_scope!(injector, dyn AiClientProvider, DefaultAiClientProvider);
-    register_scope!(injector, dyn ChatCreator, DefaultChatCreator);
-    register_scope!(injector, dyn ChatBrancher, DefaultChatBrancher);
-    register_scope!(injector, dyn AgentProvider, DefaultAgentProvider);
-    register_scope!(injector, dyn AiStreamer, DefaultAiStreamer);
+    register_scope!(injector, AiPromptService);
+    register_scope!(injector, AiClientProvider);
+    register_scope!(injector, ChatCreator);
+    register_scope!(injector, ChatBrancher);
+    register_scope!(injector, AgentProvider);
+    register_scope!(injector, AiStreamer);
     register_scope!(injector, dyn ToolsProvider, DefaultToolsProvider);
-    register_scope!(
-        injector,
-        dyn ToolApprovalResolver,
-        DefaultToolApprovalResolver
-    );
-    register_scope!(injector, dyn DocumentUploader, DefaultDocumentUploader);
+    register_scope!(injector, ToolApprovalResolver);
+    register_scope!(injector, DocumentUploader);
 
     // Auth
 
