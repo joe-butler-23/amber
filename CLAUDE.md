@@ -30,7 +30,7 @@ npm run dev               # Vite dev server only (no Tauri shell)
 npm run tauri build       # Production build
 npm run build             # TypeScript check + Vite build only
 npm run android:dev       # Tauri Android dev build
-npm run android:build     # Tauri Android production build
+npm run android:build     # Signed arm64 Android build (inside nix-shell)
 
 # Linting & Formatting
 npm run lint               # ESLint
@@ -38,8 +38,6 @@ npm run format             # Prettier
 
 # Testing
 npm run test               # Vitest unit tests
-npm run uitest              # Vitest with the interactive UI
-npm run coverage            # Coverage report
 ```
 
 ### Rust backend
@@ -51,7 +49,7 @@ cargo test --workspace --features wry
 cargo clippy --all-targets --features wry
 ```
 
-`Cargo.toml` has **no default runtime feature** — each platform's `tauri.<platform>.conf.json` opts into its own runtime (**CEF on Linux, WRY elsewhere**). Bare `cargo build`/`test`/`clippy` therefore fails to compile (`tauri::Wry` not found); always pass `--features wry` for local dev/CI regardless of host OS. Never add a `default` feature — it would silently combine with a platform's own choice.
+`Cargo.toml` has **no default runtime feature** — each platform's `tauri.<platform>.conf.json` opts into its own runtime (**CEF on Linux, WRY elsewhere**). Bare `cargo build`/`test`/`clippy` therefore fails to compile (`tauri::Wry` not found); always pass `--features wry` for local development regardless of host OS. Never add a `default` feature — it would silently combine with a platform's own choice.
 
 `[patch.crates-io]` redirects `tauri`/`tauri-plugin-*`/`tauri-runtime-wry` to a `feat/cef` fork (adds CEF support upstream lacks). Behavior may diverge from published Tauri — keep this in mind when a bug looks upstream.
 
@@ -117,7 +115,7 @@ The `SyncEngine` (`sync/engine.rs`, impl: `sync/implementations/default_sync_eng
 
 **Refusing a remote delete:** a `TableSyncConfig::delete_guard` (SQL, primary key bound as `?1`…) makes `apply_remote` keep a row whose incoming tombstone it matches and re-stage the row's cells, resurrecting it everywhere. `assets` uses it so a device still referencing or recently claiming an image undoes another device's sweep.
 
-**Invariants spanning rows** (only one default study profile, say) survive cell-level LWW as a `PostSyncTask` (`sync/post_sync_task.rs`) implemented in the owning module and registered in `create_injector.rs`'s `register_post_sync_tasks`; the engine runs them between applying remote cells and pushing. Each must be deterministic — decide from `created_at`/`id`, never local time or `modified_at`.
+**Invariants spanning rows** (only one default study profile, say) survive cell-level LWW as a `PostSyncTask` (`sync/post_sync_task.rs`) implemented in the owning module and registered in `create_injector.rs`'s `register_post_sync_tasks`; the engine runs them between applying remote cells and pushing. Invariant repairs must be deterministic — decide from `created_at`/`id`, never local time or `modified_at`. Trash retention also runs here after fresh reconciliation and applies the local retention policy.
 
 ### Naming Conventions
 
@@ -147,7 +145,7 @@ Elements (`Folder`, `LearningAsset`, `Extract`, `Card`) share structure via trai
 ### Key Directories
 
 - `api/` — Typed wrappers around `invoke()` calls, mirroring backend modules (`elements`, `study`, `settings`, `sync`, `backend`, `bibliographicalSources`, `appInfo`)
-- `features/` — Route-scoped feature modules, e.g. `App` (root shell), `ElementViewer` (editor/reviewer for a selected element), `Sidebar` (file tree), `Study`, `Import`, `Settings`, `Aside`, `Updater`
+- `features/` — Route-scoped feature modules, e.g. `App` (root shell), `ElementViewer` (editor/reviewer for a selected element), `Sidebar` (file tree), `Study`, `Import`, `Settings`, `Aside`
 - `components/` — Shared cross-feature components (e.g. `Editor`, the Lexical-based rich text editor, and `AppTooltip`, the tooltip every feature uses — see UI Guidelines)
 - `stores/` — Redux slices: `elements`, `elementDetails`, `user`, `sync`, `settings`, `bibliographicalSources`, `study`, `search`, `app`
 - `hooks/` — Reusable hooks; notably `useApi` for loading/error state around API calls
@@ -168,7 +166,7 @@ Routes are defined in `src/router.tsx`. For type-safe navigation and param readi
 3. Backend handler runs and returns `Result<ResponseDto, ApiError>`
 4. Errors surface via `ApiError`; success updates local or Redux state
 
-The `useApi` hook standardizes async calls via a `callApi` function. **Route each logical action through one `callApi` call** (from `useApi`/`useApiWithCustomError`), not direct `invoke()`/wrapper calls or multiple `callApi` calls per action. Always surface the resulting error in the UI near the triggering action (inline, e.g. `AuthModal`); fall back to a Mantine notification (`notifications.show(...)`) only when there's no sensible inline spot — as `src/stores/sync/syncActions.ts` does for the sync thunk, which runs outside any component.
+The `useApi` hook standardizes async calls via a `callApi` function. **Route each logical action through one `callApi` call** (from `useApi`), not direct `invoke()`/wrapper calls or multiple `callApi` calls per action. Always surface the resulting error in the UI near the triggering action (inline, e.g. `AuthModal`); fall back to a Mantine notification (`notifications.show(...)`) only when there's no sensible inline spot — as `src/stores/sync/syncActions.ts` does for the sync thunk, which runs outside any component.
 
 ### Backend → Frontend Request Bridge
 
@@ -183,7 +181,7 @@ Event name/DTO live together under `src/api/<module>/events/` as usual (e.g. `CO
 
 The editor uses **Lexical**, built via its extension system (`@lexical/extension`'s `defineExtension`/`buildEditorFromExtensions`), not the older plugin-array API. `src/components/Editor/editorExtension.ts` exports the shared `editorNodes`, `editorExtensionDependencies`, and static `editorTheme` used by **both**:
 
-- `Editor.tsx` — the interactive editor (adds its own `AutoFocusExtension` config and dynamic theme entries like Shiki code-block classes)
+- `Editor.tsx` — the interactive editor with its theme classes
 - `lexicalJsonConversion.ts` — a headless editor (`runHeadless`) converting HTML/serialized-node fragments to Lexical JSON outside React (e.g. Import, building extract/card content from a highlight)
 
 Keep node types, extension dependencies, and the static theme in sync between these two — a mismatch (e.g. a missing theme key like `tableScrollableWrapper`) causes divergent behavior or dev-only warnings between them. Cell content is stored and transferred as Lexical JSON.

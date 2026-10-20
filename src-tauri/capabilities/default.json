@@ -24,14 +24,6 @@
                     "url": "http://*"
                 }
             ]
-        },
-        {
-            "identifier": "http:default",
-            "allow": [
-                {
-                    "url": "https://*"
-                }
-            ]
         }
     ]
 }

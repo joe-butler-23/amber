@@ -2,7 +2,7 @@
 
 Read `CLAUDE.md` for application architecture and code conventions. Use the canonical `~/.agents/skills/beads/SKILL.md` for tracker work; Minworker is the canonical development host.
 
-The `BOOX Android` workflow builds the arm64 APK from this fork. Android signing uses the repository secrets `ANDROID_KEY_BASE64`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`; the private recovery copy lives on Minworker under `~/.local/share/amber/signing/`. Preserve that signing identity for in-place app upgrades. Never commit or print signing material.
+Build the signed BOOX APK with `nix-shell --run "agent-heavy npm run android:build"`. The private signing identity lives on Minworker under `~/.local/share/amber/signing/`; preserve it for in-place upgrades and never print or commit it. There is no CI.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:46cd31e7 -->
 ## Beads Issue Tracker

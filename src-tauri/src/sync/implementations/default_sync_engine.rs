@@ -86,9 +86,9 @@ impl DefaultSyncEngine {
             // half-materialized: a crash would strand columns past the cursor,
             // and a child pulled ahead of its parent would trip the deferred FK
             // check.
-            if !self.store.has_pending_changes().await?
-                && !self.store.has_unresolved_foreign_keys().await?
-            {
+            let materialized = !self.store.has_pending_changes().await?
+                && !self.store.has_unresolved_foreign_keys().await?;
+            if materialized {
                 self.store
                     .set_last_pulled_server_seq(next_server_seq)
                     .await?;
@@ -100,6 +100,9 @@ impl DefaultSyncEngine {
             }
 
             if !has_more {
+                if !materialized {
+                    return Err(SyncError::IncompletePull);
+                }
                 break;
             }
         }

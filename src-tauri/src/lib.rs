@@ -57,7 +57,6 @@ use crate::backup::background::spawn_backup_task;
 use crate::common::utils::create_injector::create_injector;
 use crate::infrastructure::value_objects::app_data_directory::AppDataDirectory;
 use crate::sync::bootstrap::register_sync_tables;
-use crate::trash::background::spawn_trash_purge_task;
 
 pub use common::types::SourceError;
 
@@ -84,7 +83,6 @@ pub async fn run() {
                 .level(log::LevelFilter::Info)
                 .build(),
         )
-        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_clipboard_manager::init());
 
     #[cfg(desktop)]
@@ -106,19 +104,16 @@ pub async fn run() {
 
     #[cfg(desktop)]
     {
-        tauri_builder = tauri_builder
-            .plugin(tauri_plugin_process::init())
-            .plugin(
-                tauri_plugin_window_state::Builder::new()
-                    .with_state_flags(
-                        StateFlags::SIZE
-                            | StateFlags::POSITION
-                            | StateFlags::MAXIMIZED
-                            | StateFlags::FULLSCREEN,
-                    )
-                    .build(),
-            )
-            .plugin(tauri_plugin_updater::Builder::new().build());
+        tauri_builder = tauri_builder.plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    StateFlags::SIZE
+                        | StateFlags::POSITION
+                        | StateFlags::MAXIMIZED
+                        | StateFlags::FULLSCREEN,
+                )
+                .build(),
+        );
     }
 
     tauri_builder
@@ -148,9 +143,6 @@ pub async fn run() {
                     .expect("no main window")
                     .set_title("Amber - development");
             }
-
-            // Starting the trash retention purge, which also runs once right away.
-            spawn_trash_purge_task(injector.clone());
 
             // Moving embedded images into the asset store and sweeping unreferenced ones.
             spawn_asset_maintenance_task(injector.clone());

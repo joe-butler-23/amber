@@ -83,6 +83,6 @@ parts:
 
       set -eu
       npm install
-      npm run tauri build -- --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}' -- --features store
+      npm run tauri build -- --bundles deb -- --features store
       dpkg -x src-tauri/target/release/bundle/deb/*.deb $SNAPCRAFT_PART_INSTALL/
       sed -i -e "s|Icon=Amber|Icon=/usr/share/icons/hicolor/128x128/apps/Amber.png|g" "$SNAPCRAFT_PART_INSTALL/usr/share/applications/Amber.desktop"

@@ -23,7 +23,6 @@ use crate::{
         value_objects::{app_data_directory::AppDataDirectory, db_pool::DbPool},
     },
     secrets::repositories::secrets_repository::SecretsRepository,
-    settings::value_objects::database_location::DatabaseLocation,
     sync::implementations::sqlite_sync_store::SqliteSyncStore,
     sync::implementations::sqlite_sync_store::register_scoped_pending_buffer,
     sync::post_sync_tasks::PostSyncTasks,
@@ -63,9 +62,8 @@ async fn create_test_injector_with_sqlite_url(sqlite_url: &str) -> Injector {
     injector.register_singleton(Arc::new(app_data_directory.clone()));
 
     let (sqlite_pool, sync_clock) = create_sqlite_pool(sqlite_url).await.unwrap();
-    let database_location = DatabaseLocation::new_unchecked(app_data_directory.get_path().clone());
 
-    let db_pool = DbPool::new(sqlite_pool, database_location, sync_clock);
+    let db_pool = DbPool::new(sqlite_pool, sync_clock);
     injector.register_singleton(Arc::new(db_pool));
     register_scoped_tx(&mut injector);
     register_scoped_pending_buffer(&mut injector);

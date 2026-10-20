@@ -53,6 +53,9 @@ pub enum SyncError {
     #[error("Invalid FK policy value: {0}")]
     InvalidFkPolicyValue(String),
 
+    #[error("Sync pull left buffered changes or unresolved foreign keys")]
+    IncompletePull,
+
     #[error("Foreign key repair did not converge for the synced tables")]
     FkRepairDidNotConverge,
 

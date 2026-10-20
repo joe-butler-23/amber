@@ -23,19 +23,10 @@
             "csp": null
         }
     },
-    "plugins": {
-        "updater": {
-            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQzRUY3RUM0RUYwNTIwNUIKUldSYklBWHZ4SDd2MHczWVh0dGRsVTJBZmNRcXF2T3lZSnBaVitsREdDOVhLU3E3NjdOZjU0V3EK",
-            "endpoints": [
-                "https://github.com/ambercrew/amber/releases/download/latest/latest.json"
-            ]
-        }
-    },
     "bundle": {
-        "createUpdaterArtifacts": true,
         "active": true,
         "targets": "all",
-        "shortDescription": "Distraction-free, minimalist yet powerful incremental learning — free and open source.",
+        "shortDescription": "Distraction-free, minimalist yet powerful incremental learning \u2014 free and open source.",
         "icon": [
             "icons/32x32.png",
             "icons/128x128@2x.png",

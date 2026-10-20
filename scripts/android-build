@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+signing="${AMBER_SIGNING_DIRECTORY:-$HOME/.local/share/amber/signing}"
+export AMBER_KEYSTORE="$signing/amber-boox.jks"
+AMBER_KEY_PASSWORD=$(cat "$signing/password")
+export AMBER_KEY_PASSWORD
+test -f "$AMBER_KEYSTORE"
+npm run tauri -- android build --features wry --apk --target aarch64 "$@"
+apk=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+certificate=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" |
+  sed -n 's/.*certificate SHA-256 digest: //p')
+test "$certificate" = "$(cat "$signing/certificate-sha256.txt")"
+sha256sum "$apk"

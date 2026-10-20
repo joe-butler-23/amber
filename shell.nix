@@ -1,76 +1,24 @@
 let
-  nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-25.11";
-  rustOverlaySrc = fetchTarball "https://github.com/oxalica/rust-overlay/archive/master.tar.gz";
-  pkgs = import nixpkgs {
-    config = {
-      android_sdk.accept_license = true;
-      allowUnfree = true;
-    };
-    overlays = [ (import rustOverlaySrc) ];
+  pkgs = import <nixpkgs> {
+    overlays = [ (import (builtins.fetchTarball "https://github.com/oxalica/rust-overlay/archive/master.tar.gz")) ];
+    config = { allowUnfree = true; android_sdk.accept_license = true; };
   };
-  rustToolChain = pkgs.rust-bin.stable.latest.default.override {
-    targets = [
-      "aarch64-linux-android"
-      "armv7-linux-androideabi"
-      "x86_64-linux-android"
-      "i686-linux-android"
-    ];
-  };
-
-  buildToolsVersionsAndroid = "35.0.0";
-
-  androidComposition = pkgs.androidenv.composeAndroidPackages {
-    includeNDK = true;
-    ndkVersions = [ "29.0.14206865" ];
-    buildToolsVersions = [ buildToolsVersionsAndroid ];
+  sdk = (pkgs.androidenv.composeAndroidPackages {
     platformVersions = [ "36" ];
+    buildToolsVersions = [ "35.0.0" ];
+    includeNDK = true;
+    ndkVersions = [ "27.0.12077973" ];
     includeEmulator = false;
-    includeSystemImages = false;
-  };
-  androidSdk = androidComposition.androidsdk;
-in
-pkgs.mkShell rec {
-  nativeBuildInputs = with pkgs; [
-    android-studio
-    cargo-expand
-    cargo-tauri
-    electron
-    gradle
-    jdk17
-    nodejs
-    pkg-config
-    rustToolChain
-    sqlx-cli
-    vscode-extensions.vadimcn.vscode-lldb
-    jq
+  }).androidsdk;
+in pkgs.mkShell {
+  packages = with pkgs; [
+    nodejs jdk17 pkg-config openssl webkitgtk_4_1 librsvg protobuf
+    (rust-bin.stable.latest.default.override { targets = [ "aarch64-linux-android" ]; })
+    sdk
   ];
-
-  buildInputs = with pkgs; [
-    androidSdk
-    atkmm
-    cairo
-    gdk-pixbuf
-    glib
-    gtk3
-    librsvg
-    libsoup_3
-    openssl
-    webkitgtk_4_1
-  ];
-
-  # Android environment variables.
-  ANDROID_HOME = "${androidComposition.androidsdk}/libexec/android-sdk";
-  ANDROID_NDK_ROOT = "${ANDROID_HOME}/ndk-bundle";
-  GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${ANDROID_HOME}/build-tools/${buildToolsVersionsAndroid}/aapt2";
-
-  NDK_HOME = "${androidSdk}/libexec/android-sdk/ndk/29.0.14206865";
+  ANDROID_HOME = "${sdk}/libexec/android-sdk";
+  ANDROID_NDK_ROOT = "${sdk}/libexec/android-sdk/ndk/27.0.12077973";
+  NDK_HOME = "${sdk}/libexec/android-sdk/ndk/27.0.12077973";
   JAVA_HOME = "${pkgs.jdk17}";
-
-  # Environment variables for Linux.
-  GIO_MODULE_DIR = "${pkgs.glib-networking}/lib/gio/modules/";
-  WEBKIT_DISABLE_DMABUF_RENDERER = 1;
-  XDG_DATA_DIRS = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS";
-
-  # Used for React-dev-tools.
-  ELECTRON_OVERRIDE_DIST_PATH = "${pkgs.electron}/bin/";
+  GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${sdk}/libexec/android-sdk/build-tools/35.0.0/aapt2";
 }

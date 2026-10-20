@@ -101,6 +101,7 @@ use crate::settings::repositories::settings_repository::SettingsRepository;
 use crate::sync::engine::SyncEngine;
 use crate::sync::post_sync_task::PostSyncTask;
 use crate::sync::post_sync_tasks::PostSyncTasks;
+use crate::trash::services::implementations::trash_retention_post_sync_task::TrashRetentionPostSyncTask;
 use crate::sync::store::SyncStore;
 #[cfg(not(test))]
 use crate::settings::value_objects::settings_profile::SettingsProfile;
@@ -207,11 +208,7 @@ pub async fn create_injector<R: tauri::Runtime>(
         .await
         .expect("Error connecting to Sqlite database");
 
-    let db_pool = DbPool::new(
-        sqlite_pool,
-        settings.database_location().clone(),
-        sync_clock,
-    );
+    let db_pool = DbPool::new(sqlite_pool, sync_clock);
     injector.register_singleton(Arc::new(db_pool));
     register_scoped_tx(&mut injector);
     crate::sync::implementations::sqlite_sync_store::register_scoped_pending_buffer(&mut injector);
@@ -467,12 +464,14 @@ pub async fn create_injector<R: tauri::Runtime>(
 fn register_post_sync_tasks(injector: &mut Injector) {
     register_scope!(injector, SingleDefaultProfilePostSyncTask);
     register_scope!(injector, TrashedSubtreePostSyncTask);
+    register_scope!(injector, TrashRetentionPostSyncTask);
 
     injector.register_scope_factory::<PostSyncTasks>(|scope| {
         Box::pin(async move {
             let tasks: Vec<Arc<dyn PostSyncTask>> = vec![
                 scope.resolve::<SingleDefaultProfilePostSyncTask>().await,
                 scope.resolve::<TrashedSubtreePostSyncTask>().await,
+                scope.resolve::<TrashRetentionPostSyncTask>().await,
             ];
             Arc::new(PostSyncTasks::new(tasks))
         })
@@ -493,9 +492,7 @@ pub fn register_scoped_tx(injector: &mut Injector) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ai_integration::clients::mock_client::MockClient, test_utils::create_temp_directory,
-    };
+    use crate::test_utils::create_temp_directory;
 
     use super::*;
 
@@ -505,10 +502,7 @@ mod tests {
 
         let app_data_directory = AppDataDirectory::new(create_temp_directory().await);
         let app_handle = tauri::test::mock_app().handle().clone();
-        let mut injector = create_injector(app_data_directory, app_handle).await;
-
-        // Needed for testing.
-        injector.register_singleton(Arc::new(MockClient::default()));
+        let injector = create_injector(app_data_directory, app_handle).await;
 
         // Act & Assert
 

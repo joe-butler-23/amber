@@ -15,7 +15,7 @@ import lexicalPlugin from "@lexical/eslint-plugin";
 import mantine from "eslint-config-mantine";
 
 export default defineConfig([
-	{ ignores: ["dist", "src-tauri", "coverage"] },
+	{ ignores: ["dist", "src-tauri"] },
 	{
 		settings: {
 			react: {
@@ -102,20 +102,6 @@ export default defineConfig([
 					},
 				},
 			],
-		},
-	},
-	{
-		// React's `act()` only flushes pending effects and microtasks when its
-		// callback is async, so the flush idiom is an async arrow that is
-		// deliberately empty (`await act(async () => {})`) or that awaits
-		// nothing. Both rules are false positives on that shape.
-		files: ["src/__test__/**/*.{ts,tsx}"],
-		rules: {
-			"@typescript-eslint/no-empty-function": [
-				"error",
-				{ allow: ["arrowFunctions"] },
-			],
-			"@typescript-eslint/require-await": "off",
 		},
 	},
 ]);
