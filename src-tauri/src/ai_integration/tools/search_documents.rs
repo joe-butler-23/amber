@@ -41,11 +41,11 @@ pub enum SearchDocumentsError {
 
 pub struct SearchDocuments {
     chat_id: Uuid,
-    ai_client_provider: Arc<dyn AiClientProvider>,
+    ai_client_provider: Arc<AiClientProvider>,
 }
 
 impl SearchDocuments {
-    pub fn new(ai_client_provider: Arc<dyn AiClientProvider>, chat_id: Uuid) -> Self {
+    pub fn new(ai_client_provider: Arc<AiClientProvider>, chat_id: Uuid) -> Self {
         Self {
             ai_client_provider,
             chat_id,

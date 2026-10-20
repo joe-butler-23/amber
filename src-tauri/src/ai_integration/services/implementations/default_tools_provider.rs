@@ -29,7 +29,7 @@ struct ToolsContext {
 
 #[derive(ScopeInjectable)]
 pub struct DefaultToolsProvider {
-    ai_client_provider: Arc<dyn AiClientProvider>,
+    ai_client_provider: Arc<AiClientProvider>,
     meta_repository: Arc<dyn MetaRepository>,
     element_creation_service: Arc<dyn ElementCreationService>,
     lexical_json_converter: Arc<dyn LexicalJsonConverter>,

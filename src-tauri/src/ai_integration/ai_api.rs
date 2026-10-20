@@ -37,7 +37,7 @@ pub async fn stream_ai_response(
     let scope = injector.start_scope();
 
     let result = scope
-        .resolve::<dyn AiStreamer>()
+        .resolve::<AiStreamer>()
         .await
         .stream(
             request,
@@ -77,7 +77,7 @@ pub async fn branch_ai_chat(
 ) -> Result<Chat, ApiError> {
     let scope = injector.start_scope();
     let branch = scope
-        .resolve::<dyn ChatBrancher>()
+        .resolve::<ChatBrancher>()
         .await
         .branch_chat(chat_id, message_id)
         .await?;
@@ -100,7 +100,7 @@ pub async fn resolve_tool_approval(
     approved: bool,
 ) -> Result<MessageResponseDto, ApiError> {
     let scope = injector.start_scope();
-    let resolver = scope.resolve::<dyn ToolApprovalResolver>().await;
+    let resolver = scope.resolve::<ToolApprovalResolver>().await;
     let message = resolver.resolve(message_id, approved).await?;
     scope.save_changes().await?;
     let approval_markdown = match message.content() {
@@ -149,7 +149,7 @@ pub async fn get_chat_messages_ordered(
 ) -> Result<Vec<MessageResponseDto>, ApiError> {
     let scope = injector.start_scope();
     let ai_repository = scope.resolve::<dyn AiRepository>().await;
-    let resolver = scope.resolve::<dyn ToolApprovalResolver>().await;
+    let resolver = scope.resolve::<ToolApprovalResolver>().await;
     let messages = ai_repository.get_chat_messages_ordered(id).await?;
     let mut context_snippets_by_message =
         group_snippets_by_message(ai_repository.get_context_snippets_for_chat(id).await?);
@@ -195,7 +195,7 @@ pub async fn upload_document(
 ) -> Result<UploadOutcome, ApiError> {
     let scope = injector.start_scope();
     let outcome = scope
-        .resolve::<dyn DocumentUploader>()
+        .resolve::<DocumentUploader>()
         .await
         .upload_document(PathBuf::from(path), chat_id)
         .await?;
@@ -209,7 +209,7 @@ pub async fn list_ai_prompts(
 ) -> Result<Vec<AiPromptResponseDto>, ApiError> {
     let scope = injector.start_scope();
     let prompts = scope
-        .resolve::<dyn AiPromptService>()
+        .resolve::<AiPromptService>()
         .await
         .list_prompts()
         .await?;
@@ -223,7 +223,7 @@ pub async fn create_ai_prompt(
 ) -> Result<AiPromptResponseDto, ApiError> {
     let scope = injector.start_scope();
     let prompt = scope
-        .resolve::<dyn AiPromptService>()
+        .resolve::<AiPromptService>()
         .await
         .create_prompt(dto.name, dto.content)
         .await?;
@@ -239,7 +239,7 @@ pub async fn update_ai_prompt(
 ) -> Result<AiPromptResponseDto, ApiError> {
     let scope = injector.start_scope();
     let prompt = scope
-        .resolve::<dyn AiPromptService>()
+        .resolve::<AiPromptService>()
         .await
         .update_prompt(id, dto.name, dto.content)
         .await?;
@@ -254,7 +254,7 @@ pub async fn delete_ai_prompt(
 ) -> Result<(), ApiError> {
     let scope = injector.start_scope();
     scope
-        .resolve::<dyn AiPromptService>()
+        .resolve::<AiPromptService>()
         .await
         .delete_prompt(id)
         .await?;
