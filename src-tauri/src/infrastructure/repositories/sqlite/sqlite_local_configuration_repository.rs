@@ -1,61 +1,68 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use injector_derive::ScopeInjectable;
+use serde::{Serialize, de::DeserializeOwned};
+use thiserror::Error;
 
 use crate::{
     common::repository_error::RepositoryError,
-    infrastructure::{
-        repositories::sqlite::sqlite_rows::local_configuration_row::LocalConfigurationRow,
-        value_objects::db_transaction::DbTransaction,
-    },
-    local_configurations::{
-        entities::local_configuration::LocalConfiguration,
-        repositories::local_configuration_repository::LocalConfigurationRepository,
-    },
+    infrastructure::value_objects::db_transaction::DbTransaction,
 };
+
+#[derive(Debug, Error)]
+pub enum LocalConfigurationError {
+    #[error(transparent)]
+    Repository(#[from] RepositoryError),
+    #[error("Failed to deserialize local configuration value")]
+    Deserialize(#[source] serde_json::Error),
+    #[error("Failed to serialize local configuration value")]
+    Serialize(#[source] serde_json::Error),
+}
 
 #[derive(ScopeInjectable)]
 pub struct SqliteLocalConfigurationRepository {
     tx: Arc<DbTransaction>,
 }
 
-#[async_trait]
-impl LocalConfigurationRepository for SqliteLocalConfigurationRepository {
-    async fn get_by_name_raw(
+impl SqliteLocalConfigurationRepository {
+    pub async fn get_by_name<T: DeserializeOwned + Send>(
         &self,
         name: &str,
-    ) -> Result<Option<LocalConfiguration>, RepositoryError> {
-        let mut tx = self.tx.lock().await;
-        let tx = tx.as_mut();
-
-        let row = sqlx::query_as!(
-            LocalConfigurationRow,
-            r#"SELECT * FROM local_configurations WHERE name = $1"#,
-            name
-        )
-        .fetch_optional(&mut *tx)
-        .await;
-
-        Ok(row?.map(|value| value.into()))
+    ) -> Result<Option<T>, LocalConfigurationError> {
+        let row = {
+            let mut tx = self.tx.lock().await;
+            sqlx::query!(
+                r#"SELECT * FROM local_configurations WHERE name = $1"#,
+                name
+            )
+            .fetch_optional(tx.as_mut())
+            .await
+            .map_err(RepositoryError::from)?
+        };
+        row.map(|row| {
+            serde_json::from_str(&row.value).map_err(LocalConfigurationError::Deserialize)
+        })
+        .transpose()
     }
 
-    async fn upsert(&self, configuration: &LocalConfiguration) -> Result<(), RepositoryError> {
+    pub async fn set_by_name<T: Serialize + Sync>(
+        &self,
+        name: &str,
+        value: &T,
+    ) -> Result<(), LocalConfigurationError> {
+        let value = serde_json::to_string(value).map_err(LocalConfigurationError::Serialize)?;
         let mut tx = self.tx.lock().await;
-        let tx = tx.as_mut();
-
-        let result = sqlx::query!(
+        sqlx::query!(
             r#"INSERT INTO local_configurations(name, value) VALUES ($1, $2)
             ON CONFLICT(name) DO UPDATE
             SET name = $1, value = $2
             "#,
-            configuration.name,
-            configuration.value
+            name,
+            value
         )
-        .execute(&mut *tx)
-        .await;
-
-        result?;
+        .execute(tx.as_mut())
+        .await
+        .map_err(RepositoryError::from)?;
         Ok(())
     }
 }

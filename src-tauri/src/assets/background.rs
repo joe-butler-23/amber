@@ -6,9 +6,7 @@ use injector::injector::Injector;
 use crate::assets::services::asset_service::AssetService;
 use crate::backend::clients::amber_backend_client::AmberBackendClient;
 use crate::infrastructure::extensions::unit_of_work::UnitOfWorkExt;
-use crate::local_configurations::repositories::local_configuration_repository::{
-    LocalConfigurationRepository, LocalConfigurationRepositoryExt,
-};
+use crate::infrastructure::repositories::sqlite::sqlite_local_configuration_repository::SqliteLocalConfigurationRepository;
 use crate::sync::sync_completion::SyncCompletion;
 use crate::sync::sync_lock::SyncLock;
 
@@ -60,7 +58,7 @@ async fn wait_for_remote_changes(injector: &Injector) {
 async fn embedded_images_migrated(injector: &Injector) -> bool {
     match injector
         .start_scope()
-        .resolve::<dyn LocalConfigurationRepository>()
+        .resolve::<SqliteLocalConfigurationRepository>()
         .await
         .get_by_name::<bool>(EMBEDDED_IMAGES_MIGRATED_CONFIGURATION_NAME)
         .await
@@ -76,7 +74,7 @@ async fn embedded_images_migrated(injector: &Injector) -> bool {
 async fn mark_embedded_images_migrated(injector: &Injector) {
     let scope = injector.start_scope();
     let result = scope
-        .resolve::<dyn LocalConfigurationRepository>()
+        .resolve::<SqliteLocalConfigurationRepository>()
         .await
         .set_by_name(EMBEDDED_IMAGES_MIGRATED_CONFIGURATION_NAME, &true)
         .await;

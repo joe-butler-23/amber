@@ -11,9 +11,7 @@ use rand::seq::SliceRandom;
 use crate::common::repository_error::RepositoryError;
 use crate::elements::value_objects::element_id::ElementId;
 use crate::elements::value_objects::element_id_with_priority::ElementIdWithPriority;
-use crate::local_configurations::repositories::local_configuration_repository::{
-    LocalConfigurationRepository, LocalConfigurationRepositoryExt,
-};
+use crate::infrastructure::repositories::sqlite::sqlite_local_configuration_repository::SqliteLocalConfigurationRepository;
 use crate::study::repositories::card_review_repository::CardReviewRepository;
 use crate::study::repositories::learning_asset_review_repository::LearningAssetReviewRepository;
 use crate::study::services::due_elements_service::DueElementsService;
@@ -25,7 +23,7 @@ use crate::study::value_objects::fuzz_factor_configuration::{
 pub struct DefaultDueElementsService {
     card_review_repository: Arc<dyn CardReviewRepository>,
     learning_asset_review_repository: Arc<dyn LearningAssetReviewRepository>,
-    local_configuration_repository: Arc<dyn LocalConfigurationRepository>,
+    local_configuration_repository: Arc<SqliteLocalConfigurationRepository>,
 }
 
 #[async_trait]
@@ -108,7 +106,6 @@ mod tests {
             sqlite_card_review_repository::SqliteCardReviewRepository,
             sqlite_learning_asset_repository::SqliteLearningAssetRepository,
             sqlite_learning_asset_review_repository::SqliteLearningAssetReviewRepository,
-            sqlite_local_configuration_repository::SqliteLocalConfigurationRepository,
             sqlite_meta_repository::SqliteMetaRepository,
         },
         study::entities::learning_asset_review::LearningAssetReview,
@@ -136,11 +133,7 @@ mod tests {
             dyn LearningAssetReviewRepository,
             SqliteLearningAssetReviewRepository
         );
-        register_scope!(
-            injector,
-            dyn LocalConfigurationRepository,
-            SqliteLocalConfigurationRepository
-        );
+        register_scope!(injector, SqliteLocalConfigurationRepository);
         register_scope!(injector, dyn DueElementsService, DefaultDueElementsService);
         injector
     }

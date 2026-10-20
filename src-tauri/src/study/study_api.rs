@@ -9,9 +9,7 @@ use crate::common::api_error::ApiError;
 use crate::elements::repositories::meta_repository::MetaRepository;
 use crate::elements::value_objects::element_id::ElementId;
 use crate::infrastructure::extensions::unit_of_work::UnitOfWorkExt;
-use crate::local_configurations::repositories::local_configuration_repository::{
-    LocalConfigurationRepository, LocalConfigurationRepositoryExt,
-};
+use crate::infrastructure::repositories::sqlite::sqlite_local_configuration_repository::SqliteLocalConfigurationRepository;
 use crate::study::dto::card_review_request_dto::CardReviewRequestDto;
 use crate::study::dto::card_review_response_dto::CardReviewResponseDto;
 use crate::study::dto::card_scheduling_dto::CardSchedulingDto;
@@ -166,7 +164,7 @@ pub async fn finish_learning_asset(
 pub async fn get_fuzz_factor(injector: State<'_, Arc<Injector>>) -> Result<u8, ApiError> {
     let scope = injector.start_scope();
     let configuration = scope
-        .resolve::<dyn LocalConfigurationRepository>()
+        .resolve::<SqliteLocalConfigurationRepository>()
         .await
         .get_by_name::<FuzzFactorConfiguration>(FUZZ_FACTOR_CONFIGURATION_NAME)
         .await?
@@ -181,7 +179,7 @@ pub async fn set_fuzz_factor(
 ) -> Result<(), ApiError> {
     let scope = injector.start_scope();
     scope
-        .resolve::<dyn LocalConfigurationRepository>()
+        .resolve::<SqliteLocalConfigurationRepository>()
         .await
         .set_by_name(
             FUZZ_FACTOR_CONFIGURATION_NAME,

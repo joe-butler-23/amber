@@ -9,7 +9,6 @@ pub mod folder_row;
 pub mod image_occlusion_card_link_row;
 pub mod image_occlusion_row;
 pub mod learning_asset_row;
-pub mod local_configuration_row;
 pub mod message_row;
 pub mod meta_row;
 pub mod saved_search_filter_row;

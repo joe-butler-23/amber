@@ -92,9 +92,6 @@ mod tests {
                 sqlite::sqlite_local_configuration_repository::SqliteLocalConfigurationRepository,
             },
         },
-        local_configurations::repositories::local_configuration_repository::{
-            LocalConfigurationRepository, LocalConfigurationRepositoryExt,
-        },
         settings::{
             entities::settings::Settings, value_objects::settings_profile::SettingsProfile,
         },
@@ -111,15 +108,11 @@ mod tests {
             SettingsProfile::Default,
         ))));
         register_scope!(injector, dyn SettingsRepository, DiskSettingsRepository);
-        register_scope!(
-            injector,
-            dyn LocalConfigurationRepository,
-            SqliteLocalConfigurationRepository
-        );
+        register_scope!(injector, SqliteLocalConfigurationRepository);
         register_scope!(injector, dyn BackupService, DefaultBackupService);
         let scope = injector.start_scope();
         scope
-            .resolve::<dyn LocalConfigurationRepository>()
+            .resolve::<SqliteLocalConfigurationRepository>()
             .await
             .set_by_name("round-trip", &"saved")
             .await
