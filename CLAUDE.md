@@ -45,7 +45,7 @@ npm run test               # Vitest unit tests
 ```bash
 cd src-tauri
 cargo build --features wry
-cargo test --workspace --features wry
+cargo test --workspace --lib --features wry
 cargo clippy --all-targets --features wry
 ```
 

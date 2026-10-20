@@ -34,7 +34,7 @@ prost = "0.14.4"
 prost-types = "0.14.4"
 rand = "0.10.3"
 regex = "1.13.1"
-tauri-plugin-http = "2.5.9"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "charset", "macos-system-configuration", "cookies", "json"] }
 reqwest-middleware = { version = "0.4", features = ["json"] }
 reqwest-retry = "0.8"
 serde = { version = "1.0.229", features = ["derive"] }
@@ -118,7 +118,6 @@ tauri-runtime-cef = { git = "https://github.com/tauri-apps/tauri", branch = "fea
 tauri-macros = { git = "https://github.com/tauri-apps/tauri", branch = "feat/cef" }
 tauri-codegen = { git = "https://github.com/tauri-apps/tauri", branch = "feat/cef" }
 
-tauri-plugin-http              = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "feat/cef" }
 tauri-plugin-fs                = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "feat/cef" }
 tauri-plugin-log               = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "feat/cef" }
 tauri-plugin-clipboard-manager = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "feat/cef" }
