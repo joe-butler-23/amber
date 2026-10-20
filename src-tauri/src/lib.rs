@@ -184,7 +184,6 @@ pub async fn run() {
             set_derived_from,
             set_element_priority_by_position,
             set_element_priority_by_percentile,
-            get_priority_queue_size,
             get_priority_neighbors,
             get_priority_position_for_new_element,
             create_folder,
@@ -241,7 +240,6 @@ pub async fn run() {
             optimize_study_profile_fsrs_params,
             // Bibliographical sources
             list_bibliographical_sources,
-            get_bibliographical_source,
             create_bibliographical_source,
             update_bibliographical_source,
             delete_bibliographical_source,

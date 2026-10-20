@@ -11,12 +11,6 @@ export function listBibliographicalSources(): Promise<
 	return invoke("list_bibliographical_sources");
 }
 
-export function getBibliographicalSource(
-	id: string,
-): Promise<BibliographicalSourceResponseDto> {
-	return invoke("get_bibliographical_source", { id });
-}
-
 export function createBibliographicalSource(
 	dto: BibliographicalSourceRequestDto,
 ): Promise<BibliographicalSourceResponseDto> {

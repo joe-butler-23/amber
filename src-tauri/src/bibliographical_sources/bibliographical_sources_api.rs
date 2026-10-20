@@ -31,20 +31,6 @@ pub async fn list_bibliographical_sources(
 }
 
 #[tauri::command]
-pub async fn get_bibliographical_source(
-    injector: State<'_, Arc<Injector>>,
-    id: Uuid,
-) -> Result<BibliographicalSourceResponseDto, ApiError> {
-    let scope = injector.start_scope();
-    let bibliographical_source = scope
-        .resolve::<dyn BibliographicalSourceService>()
-        .await
-        .get_bibliographical_source(id)
-        .await?;
-    Ok(bibliographical_source.into())
-}
-
-#[tauri::command]
 pub async fn create_bibliographical_source(
     injector: State<'_, Arc<Injector>>,
     dto: BibliographicalSourceRequestDto,

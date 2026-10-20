@@ -187,10 +187,6 @@ export function getPriorityNeighbors(
 	return invoke("get_priority_neighbors", { elementId, position });
 }
 
-export function getPriorityQueueSize(): Promise<number> {
-	return invoke("get_priority_queue_size");
-}
-
 export function getPriorityPositionForNewElement(
 	parent: ElementId | null,
 ): Promise<NewElementPriorityDto> {

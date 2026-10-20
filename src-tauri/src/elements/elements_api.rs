@@ -515,17 +515,6 @@ pub async fn get_priority_neighbors(
 }
 
 #[tauri::command]
-pub async fn get_priority_queue_size(injector: State<'_, Arc<Injector>>) -> Result<i64, ApiError> {
-    let scope = injector.start_scope();
-    let size = scope
-        .resolve::<dyn PriorityService>()
-        .await
-        .get_queue_size()
-        .await?;
-    Ok(size)
-}
-
-#[tauri::command]
 pub async fn get_priority_position_for_new_element(
     injector: State<'_, Arc<Injector>>,
     parent: Option<ElementId>,
