@@ -23,9 +23,16 @@ export function flushPendingSaves(): Promise<void> {
 	if (running) return running;
 	running = (async () => {
 		while (pending.size) {
-			const [id, entry] = pending.entries().next().value!;
-			await entry.save(await entry.read());
-			if (pending.get(id) === entry) pending.delete(id);
+			const failures: unknown[] = [];
+			for (const [id, entry] of [...pending]) {
+				try {
+					await entry.save(await entry.read());
+					if (pending.get(id) === entry) pending.delete(id);
+				} catch (error) {
+					failures.push(error);
+				}
+			}
+			if (failures.length) throw failures[0];
 		}
 	})().finally(() => {
 		running = null;
