@@ -97,7 +97,6 @@ tauri-plugin-single-instance = "2.4.2"
 tauri-plugin-window-state = "2.4.1"
 
 [features]
-store = []
 wry = ["dep:tauri-runtime-wry"]
 cef = ["dep:tauri-runtime-cef"]
 

@@ -11,20 +11,10 @@ fn main() {
             setup_sqlx().await;
         });
 
-    setup_store_flag();
-
     println!("cargo:rerun-if-changed=protobuff/");
     prost_build::compile_protos(&["protobuff/sync_objects.proto"], &["protobuff/"]).unwrap();
 
     tauri_build::build()
-}
-
-fn setup_store_flag() {
-    println!("cargo::rustc-check-cfg=cfg(store)");
-    println!("cargo:rerun-if-env-changed=STORE_BUILD");
-    if env::var("STORE_BUILD").is_ok() || cfg!(feature = "store") {
-        println!("cargo:rustc-cfg=store");
-    }
 }
 
 async fn setup_sqlx() {

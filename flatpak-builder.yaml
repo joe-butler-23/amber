@@ -45,7 +45,6 @@ modules:
         npm_config_offline: 'true'
         npm_config_cache: /run/build/amber/flatpak-node/npm-cache
         ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-        STORE_BUILD: '1'
 
     sources:
       - type: git
@@ -62,7 +61,7 @@ modules:
     build-commands:
       - mkdir -p src-tauri/.cargo && echo -e '[source.crates-io]\nreplace-with = "vendored-sources"\n\n[source.vendored-sources]\ndirectory = "/run/build/amber/cargo/vendor"' > src-tauri/.cargo/config.toml
       - npm install --offline
-      - npm run tauri build -- --bundles deb -- --features store
+      - npm run tauri build -- --bundles deb
       - cd src-tauri/target/release/bundle/deb/ && ar x *.deb && tar xf data.tar.gz
       - install -Dm755 src-tauri/target/release/bundle/deb/usr/bin/Amber /app/bin/Amber
       - install -Dm644 "src-tauri/target/release/bundle/deb/usr/share/applications/Amber.desktop" /app/share/applications/dev.amberapp.amber.desktop

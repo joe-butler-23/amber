@@ -101,7 +101,6 @@ The `EventManager` trait (impl: `TauriEventManager`, `common/services/implementa
 - **local_configurations** — Per-machine config not synced to the cloud (e.g. database location)
 - **sync** — Cloud sync via protobuf messages (see Sync below)
 - **backup** — Background auto-backup service
-- **app_info** — Small app-level queries (e.g. store-build detection)
 - **statistics** — Read-only aggregates for the Home page (element counts, study time and daily review activity, bucketed by local day)
 - **database** — SQLite connection management
 
@@ -144,7 +143,7 @@ Elements (`Folder`, `LearningAsset`, `Extract`, `Card`) share structure via trai
 
 ### Key Directories
 
-- `api/` — Typed wrappers around `invoke()` calls, mirroring backend modules (`elements`, `study`, `settings`, `sync`, `backend`, `bibliographicalSources`, `appInfo`)
+- `api/` — Typed wrappers around `invoke()` calls, mirroring backend modules (`elements`, `study`, `settings`, `sync`, `backend`, `bibliographicalSources`)
 - `features/` — Route-scoped feature modules, e.g. `App` (root shell), `ElementViewer` (editor/reviewer for a selected element), `Sidebar` (file tree), `Study`, `Import`, `Settings`, `Aside`
 - `components/` — Shared cross-feature components (e.g. `Editor`, the Lexical-based rich text editor, and `AppTooltip`, the tooltip every feature uses — see UI Guidelines)
 - `stores/` — Redux slices: `elements`, `elementDetails`, `user`, `sync`, `settings`, `bibliographicalSources`, `study`, `search`, `app`

@@ -1,5 +1,4 @@
 mod ai_integration;
-mod app_info;
 mod assets;
 mod backend;
 mod backup;
@@ -28,7 +27,6 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use ai_integration::ai_api::*;
-use app_info::app_info_api::*;
 use assets::assets_api::*;
 use backend::api::auth_api::*;
 use backend::api::user_api::*;
@@ -271,9 +269,6 @@ pub async fn run() {
             extract_pdf,
             extract_epub,
             get_pdf_page_count,
-            get_pdf_page_html,
-            // App Info
-            is_store_installed,
             set_system_chrome_theme,
             // AI
             create_ai_chat,
