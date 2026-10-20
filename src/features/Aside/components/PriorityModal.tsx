@@ -7,10 +7,9 @@ import {
 	setElementPriorityByPosition,
 	setElementPriorityByPercentile,
 } from "../../../api/elements/api/elementsApi";
+import { useAppModal } from "../../../hooks/useAppModal";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
-import { closePriorityModal } from "../../../stores/app/appReducer";
-import { selectIsPriorityModalOpened } from "../../../stores/app/appSelectors";
 import { loadElementDetailsAction } from "../../../stores/elements/elementsActions";
 import {
 	selectCurrentElementDetails,
@@ -73,7 +72,7 @@ function PriorityModalBody({
 }
 
 function PriorityModal() {
-	const opened = useAppSelector(selectIsPriorityModalOpened);
+	const { opened, close } = useAppModal("priority");
 	const currentElement = useAppSelector(selectCurrentElement);
 	const details = useAppSelector(selectCurrentElementDetails);
 	const dispatch = useAppDispatch();
@@ -88,7 +87,7 @@ function PriorityModal() {
 	return (
 		<AppModal
 			opened={opened}
-			onClose={() => dispatch(closePriorityModal())}
+			onClose={close}
 			title="Priority">
 			{elementId && details ? (
 				<PriorityModalBody

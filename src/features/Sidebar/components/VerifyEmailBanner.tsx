@@ -1,7 +1,7 @@
 import { Button, Text } from "@mantine/core";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
-import { openVerifyEmailModal } from "../../../stores/app/appReducer";
+import { openModal } from "../../../stores/app/appReducer";
 import {
 	selectIsSignedIn,
 	selectUserInformation,
@@ -17,7 +17,7 @@ function VerifyEmailBanner() {
 	if (!isSignedIn || isEmailVerified) return null;
 
 	return (
-		<Button onClick={() => dispatch(openVerifyEmailModal())} mx="sm">
+		<Button onClick={() => dispatch(openModal("verifyEmail"))} mx="sm">
 			<Text>Verify your email</Text>
 		</Button>
 	);

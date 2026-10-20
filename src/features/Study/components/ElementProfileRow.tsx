@@ -5,7 +5,7 @@ import { ElementDetailsResponseDto } from "../../../api/elements/dto/elementDeta
 import useApi from "../../../hooks/useApi";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import { useTauriEvent } from "../../../hooks/useTauriEvent";
-import { openStudyProfileModal } from "../../../stores/app/appReducer";
+import { openModal } from "../../../stores/app/appReducer";
 import { loadElementDetailsAction } from "../../../stores/elements/elementsActions";
 import { ElementId } from "../../../types/elements/elementId";
 import { commandIcon } from "../../../commands/commandIcon";
@@ -85,7 +85,7 @@ function ElementProfileRow({ elementId, details }: ElementProfileRowProps) {
 			<AppTooltip label="Manage study profiles">
 				<ActionIcon
 					variant="subtle"
-					onClick={() => dispatch(openStudyProfileModal())}>
+					onClick={() => dispatch(openModal("studyProfile"))}>
 					{commandIcon("manage-study-profiles")}
 				</ActionIcon>
 			</AppTooltip>

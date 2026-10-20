@@ -2,15 +2,11 @@ import { useEffect, useState } from "react";
 import { Button, Group, Slider, Stack, Text } from "@mantine/core";
 import AppModal from "../../../components/AppModal/AppModal";
 import { getFuzzFactor, setFuzzFactor } from "../../../api/study/api/studyApi";
-import useAppDispatch from "../../../hooks/useAppDispatch";
-import useAppSelector from "../../../hooks/useAppSelector";
-import { closeStudySessionSettingsModal } from "../../../stores/app/appReducer";
-import { selectIsStudySessionSettingsModalOpened } from "../../../stores/app/appSelectors";
+import { useAppModal } from "../../../hooks/useAppModal";
 import { STUDY_SESSION_SETTINGS_CHANGED } from "../../../types/events/studySessionSettingsChangedEvent";
 
 function StudySessionSettingsModal() {
-	const opened = useAppSelector(selectIsStudySessionSettingsModalOpened);
-	const dispatch = useAppDispatch();
+	const { opened, close } = useAppModal("studySessionSettings");
 
 	const [fuzzFactor, setLocalFuzzFactor] = useState<number | null>(null);
 
@@ -20,7 +16,7 @@ function StudySessionSettingsModal() {
 	}, [opened]);
 
 	function handleClose() {
-		dispatch(closeStudySessionSettingsModal());
+		close();
 	}
 
 	function handleApply() {

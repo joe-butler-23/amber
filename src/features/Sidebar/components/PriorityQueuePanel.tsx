@@ -10,7 +10,7 @@ import { StudySessionLocationState } from "../../../types/study/studySessionLoca
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
 import { selectStudyQueue } from "../../../stores/study/studySelectors";
-import { openStudySessionSettingsModal } from "../../../stores/app/appReducer";
+import { openModal } from "../../../stores/app/appReducer";
 import { useDueElementsPreview } from "../../Study/hooks/useDueElementsPreview";
 import { ElementNodeType } from "../../../types/elements/elementNodeType";
 import AppTooltip from "../../../components/AppTooltip/AppTooltip";
@@ -55,7 +55,7 @@ function PriorityQueuePanel() {
 						"open-study-session-settings",
 					) as ReactElement<IconProps>,
 					label: "Study session settings",
-					onClick: () => dispatch(openStudySessionSettingsModal()),
+					onClick: () => dispatch(openModal("studySessionSettings")),
 				},
 			]}
 		/>

@@ -4,10 +4,9 @@ import { DateTimePicker } from "@mantine/dates";
 import AppModal from "../../../components/AppModal/AppModal";
 import { setElementDue } from "../../../api/study/api/studyApi";
 import useApi from "../../../hooks/useApi";
+import { useAppModal } from "../../../hooks/useAppModal";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
-import { closeDueDateModal } from "../../../stores/app/appReducer";
-import { selectIsDueDateModalOpened } from "../../../stores/app/appSelectors";
 import { loadElementDetailsAction } from "../../../stores/elements/elementsActions";
 import {
 	selectCurrentElementDetails,
@@ -75,13 +74,11 @@ function DueDateModalBody({ elementId, due, onClose }: DueDateModalBodyProps) {
 
 /** Picks a specific due date for the current element. */
 function DueDateModal() {
-	const opened = useAppSelector(selectIsDueDateModalOpened);
+	const { opened, close: onClose } = useAppModal("dueDate");
 	const currentElement = useAppSelector(selectCurrentElement);
 	const details = useAppSelector(selectCurrentElementDetails);
-	const dispatch = useAppDispatch();
 	const elementId = currentElement?.data.meta.elementId ?? null;
 	const due = dueIsoFor(details);
-	const onClose = () => dispatch(closeDueDateModal());
 
 	return (
 		<AppModal opened={opened} onClose={onClose} title="Set due date">

@@ -16,13 +16,11 @@ import { GoogleLogoIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useNavigate } from "react-router";
 import AppModal from "../../../components/AppModal/AppModal";
 import useApi from "../../../hooks/useApi";
+import { useAppModal } from "../../../hooks/useAppModal";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
-import { AuthModalTab, closeAuthModal } from "../../../stores/app/appReducer";
-import {
-	selectAuthModalInitialTab,
-	selectIsAuthModalOpened,
-} from "../../../stores/app/appSelectors";
+import { AuthModalTab } from "../../../stores/app/appReducer";
+import { selectAuthModalInitialTab } from "../../../stores/app/appSelectors";
 import { MOTION_EASING } from "../../../config/motion";
 import { useMotionDuration } from "../../../hooks/useMotionDuration";
 import {
@@ -359,13 +357,8 @@ function AuthTabs({
 }
 
 function AuthModal() {
-	const opened = useAppSelector(selectIsAuthModalOpened);
+	const { opened, close: handleClose } = useAppModal("auth");
 	const initialTab = useAppSelector(selectAuthModalInitialTab);
-	const dispatch = useAppDispatch();
-
-	function handleClose() {
-		dispatch(closeAuthModal());
-	}
 
 	return (
 		<AppModal

@@ -15,13 +15,10 @@ import {
 import { SubmitEvent, useEffect, useState } from "react";
 import AppModal from "../../../components/AppModal/AppModal";
 import useApi from "../../../hooks/useApi";
+import { useAppModal } from "../../../hooks/useAppModal";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
-import {
-	closeVerifyEmailModal,
-	openVerifyEmailModal,
-} from "../../../stores/app/appReducer";
-import { selectIsVerifyEmailModalOpened } from "../../../stores/app/appSelectors";
+import { openModal } from "../../../stores/app/appReducer";
 import {
 	resendEmailVerificationCode,
 	verifyEmail,
@@ -34,7 +31,7 @@ import {
 const VERIFICATION_CODE_LENGTH = 8;
 
 function VerifyEmailModal() {
-	const opened = useAppSelector(selectIsVerifyEmailModalOpened);
+	const { opened, close } = useAppModal("verifyEmail");
 	const isSignedIn = useAppSelector(selectIsSignedIn);
 	const userInformation = useAppSelector(selectUserInformation);
 	const isEmailVerified = userInformation?.isEmailVerified;
@@ -46,7 +43,7 @@ function VerifyEmailModal() {
 
 	useEffect(() => {
 		if (isSignedIn && isEmailVerified === false) {
-			dispatch(openVerifyEmailModal());
+			dispatch(openModal("verifyEmail"));
 		}
 	}, [dispatch, isSignedIn, isEmailVerified]);
 
@@ -55,7 +52,7 @@ function VerifyEmailModal() {
 		setVerificationCode("");
 		setResent(false);
 		clearErrorMessage();
-		dispatch(closeVerifyEmailModal());
+		close();
 	}
 
 	async function handleSubmit(event: SubmitEvent) {

@@ -30,16 +30,7 @@ import {
 } from "@phosphor-icons/react";
 import { AppDispatch, RootState } from "../stores/store";
 import { setVirtualKeyboardSuppressedAction } from "../stores/app/appActions";
-import {
-	openAiPromptLibraryModal,
-	openDueDateModal,
-	openImportModal,
-	openPriorityModal,
-	openShortcutsModal,
-	openSettingsModal,
-	openStudyProfileModal,
-	openStudySessionSettingsModal,
-} from "../stores/app/appReducer";
+import { openAiPromptLibraryModal, openModal } from "../stores/app/appReducer";
 import { openSearch } from "../stores/search/searchReducer";
 import {
 	startStudySession,
@@ -209,14 +200,14 @@ export const commandsById: Record<CommandId, Command> = {
 		group: "Study",
 		label: "Study session settings",
 		icon: createElement(ShuffleIcon),
-		execute: dispatch => dispatch(openStudySessionSettingsModal()),
+		execute: dispatch => dispatch(openModal("studySessionSettings")),
 	},
 	"manage-study-profiles": {
 		id: "manage-study-profiles",
 		group: "Study",
 		label: "Manage study profiles",
 		icon: createElement(FadersHorizontalIcon),
-		execute: dispatch => dispatch(openStudyProfileModal()),
+		execute: dispatch => dispatch(openModal("studyProfile")),
 	},
 	import: {
 		id: "import",
@@ -224,7 +215,7 @@ export const commandsById: Record<CommandId, Command> = {
 		label: "Import file or web page…",
 		shortcut: IMPORT_SHORTCUT,
 		icon: createElement(UploadSimpleIcon),
-		execute: dispatch => dispatch(openImportModal()),
+		execute: dispatch => dispatch(openModal("import")),
 	},
 	"create-card": {
 		id: "create-card",
@@ -263,7 +254,7 @@ export const commandsById: Record<CommandId, Command> = {
 		shortcut: OPEN_PRIORITY_SHORTCUT,
 		icon: createElement(ArrowsDownUpIcon),
 		enabled: state => selectCurrentElement(state) !== null,
-		execute: dispatch => dispatch(openPriorityModal()),
+		execute: dispatch => dispatch(openModal("priority")),
 	},
 	"open-due-date": {
 		id: "open-due-date",
@@ -275,7 +266,7 @@ export const commandsById: Record<CommandId, Command> = {
 			const type = selectCurrentElement(state)?.type;
 			return !!type && hasDue(type);
 		},
-		execute: dispatch => dispatch(openDueDateModal()),
+		execute: dispatch => dispatch(openModal("dueDate")),
 	},
 	"set-read-point": {
 		id: "set-read-point",
@@ -483,7 +474,7 @@ export const commandsById: Record<CommandId, Command> = {
 		label: "Open settings",
 		shortcut: OPEN_SETTINGS_SHORTCUT,
 		icon: createElement(GearIcon),
-		execute: dispatch => dispatch(openSettingsModal()),
+		execute: dispatch => dispatch(openModal("settings")),
 	},
 	"show-shortcuts": {
 		id: "show-shortcuts",
@@ -492,7 +483,7 @@ export const commandsById: Record<CommandId, Command> = {
 		shortcut: SHOW_SHORTCUTS_SHORTCUT,
 		icon: createElement(KeyboardIcon),
 		enabled: () => !isCoarsePointer(),
-		execute: dispatch => dispatch(openShortcutsModal()),
+		execute: dispatch => dispatch(openModal("shortcuts")),
 	},
 	"toggle-theme": {
 		id: "toggle-theme",

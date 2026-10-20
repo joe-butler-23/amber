@@ -11,10 +11,7 @@ import {
 	Title,
 } from "@mantine/core";
 import AppModal from "../../../components/AppModal/AppModal";
-import useAppDispatch from "../../../hooks/useAppDispatch";
-import useAppSelector from "../../../hooks/useAppSelector";
-import { closeShortcutsModal } from "../../../stores/app/appReducer";
-import { selectIsShortcutsModalOpened } from "../../../stores/app/appSelectors";
+import { useAppModal } from "../../../hooks/useAppModal";
 import { RootState } from "../../../stores/store";
 import {
 	Command,
@@ -329,8 +326,7 @@ function ShortcutSectionTable({ section }: { section: ShortcutSection }) {
 }
 
 function ShortcutsModal() {
-	const opened = useAppSelector(selectIsShortcutsModalOpened);
-	const dispatch = useAppDispatch();
+	const { opened, close } = useAppModal("shortcuts");
 	const store = useStore<RootState>();
 	// Built even while closed, so the content stays during the close transition.
 	const sections = mergeSections([
@@ -349,7 +345,7 @@ function ShortcutsModal() {
 	return (
 		<AppModal
 			opened={opened}
-			onClose={() => dispatch(closeShortcutsModal())}
+			onClose={close}
 			title="Keyboard shortcuts"
 			size={960}
 			fullScreenOnSmallScreen>

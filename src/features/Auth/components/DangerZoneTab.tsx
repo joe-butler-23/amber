@@ -2,7 +2,7 @@ import { Button, Group, Stack, Text } from "@mantine/core";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import useAppDispatch from "../../../hooks/useAppDispatch";
-import { closeManageAccountModal } from "../../../stores/app/appReducer";
+import { closeModal } from "../../../stores/app/appReducer";
 import { deleteAccount } from "../../../stores/user/userActions";
 import DeleteAccountModal from "./DeleteAccountModal";
 
@@ -14,7 +14,7 @@ function DangerZoneTab() {
 	async function handleAccountDeleted() {
 		await dispatch(deleteAccount(navigate));
 		setDeleteModalOpened(false);
-		dispatch(closeManageAccountModal());
+		dispatch(closeModal("manageAccount"));
 	}
 
 	return (

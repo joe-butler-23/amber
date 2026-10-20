@@ -19,7 +19,7 @@ import HomeStatistics from "./HomeStatistics/HomeStatistics";
 import useAppDispatch from "../../hooks/useAppDispatch";
 import useAppSelector from "../../hooks/useAppSelector";
 import { selectCurrentElement } from "../../stores/elements/elementsSelectors";
-import { openImportModal } from "../../stores/app/appReducer";
+import { openModal } from "../../stores/app/appReducer";
 import { paths } from "../../paths";
 
 export default function FolderView() {
@@ -84,7 +84,7 @@ export default function FolderView() {
 								size="xl"
 								h="auto"
 								py="md"
-								onClick={() => dispatch(openImportModal())}>
+								onClick={() => dispatch(openModal("import"))}>
 								<Stack align="center" gap={4}>
 									<UploadSimpleIcon size={28} />
 									<Text>Import file or web page…</Text>

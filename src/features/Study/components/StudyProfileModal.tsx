@@ -6,10 +6,8 @@ import {
 	listStudyProfiles,
 } from "../../../api/study/api/studyProfileApi";
 import { StudyProfileDto } from "../../../api/study/dto/studyProfileDto";
-import useAppDispatch from "../../../hooks/useAppDispatch";
+import { useAppModal } from "../../../hooks/useAppModal";
 import useAppSelector from "../../../hooks/useAppSelector";
-import { closeStudyProfileModal } from "../../../stores/app/appReducer";
-import { selectIsStudyProfileModalOpened } from "../../../stores/app/appSelectors";
 import { selectCurrentElement } from "../../../stores/elements/elementsSelectors";
 import ProfileForm from "./ProfileForm/ProfileForm";
 import StudyProfileOption from "./StudyProfileOption";
@@ -17,9 +15,8 @@ import StudyProfileOption from "./StudyProfileOption";
 const CREATE_PROFILE_VALUE = "__create__";
 
 function StudyProfileModal() {
-	const opened = useAppSelector(selectIsStudyProfileModalOpened);
+	const { opened, close } = useAppModal("studyProfile");
 	const currentElement = useAppSelector(selectCurrentElement);
-	const dispatch = useAppDispatch();
 	const [profiles, setProfiles] = useState<StudyProfileDto[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -69,7 +66,7 @@ function StudyProfileModal() {
 	return (
 		<AppModal
 			opened={opened}
-			onClose={() => dispatch(closeStudyProfileModal())}
+			onClose={close}
 			fullScreenOnSmallScreen
 			title="Study profiles"
 			size="lg">
@@ -109,7 +106,7 @@ function StudyProfileModal() {
 					key={selectedId ?? "new"}
 					profile={selected}
 					onSaved={selectId => refresh(() => selectId ?? null)}
-					onSubmitted={() => dispatch(closeStudyProfileModal())}
+					onSubmitted={close}
 				/>
 			</Stack>
 		</AppModal>

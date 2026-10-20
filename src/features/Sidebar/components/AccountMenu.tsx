@@ -11,10 +11,7 @@ import { useNavigate } from "react-router";
 import { CommandMenuItem } from "../../../commands/CommandMenuItem";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
-import {
-	openAuthModal,
-	openManageAccountModal,
-} from "../../../stores/app/appReducer";
+import { openAuthModal, openModal } from "../../../stores/app/appReducer";
 import { signOut } from "../../../stores/user/userActions";
 import {
 	selectIsOffline,
@@ -53,7 +50,7 @@ function AccountMenu() {
 					<>
 						<Menu.Item
 							leftSection={<UserCircleGearIcon size={16} />}
-							onClick={() => dispatch(openManageAccountModal())}>
+							onClick={() => dispatch(openModal("manageAccount"))}>
 							Manage account
 						</Menu.Item>
 						<Menu.Item

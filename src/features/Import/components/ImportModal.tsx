@@ -15,12 +15,11 @@ import { addPendingFiles, fileKey } from "../pendingFiles";
 import { ArrowsInSimpleIcon, FileIcon, XIcon } from "@phosphor-icons/react";
 import AppModal from "../../../components/AppModal/AppModal";
 import AutosizeTextInput from "../../../components/AutosizeTextInput/AutosizeTextInput";
+import { useAppModal } from "../../../hooks/useAppModal";
 import useAppSelector from "../../../hooks/useAppSelector";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import errorToString from "../../../utils/errorToString";
-import { selectIsImportModalOpened } from "../../../stores/app/appSelectors";
 import { selectCurrentElement } from "../../../stores/elements/elementsSelectors";
-import { closeImportModal } from "../../../stores/app/appReducer";
 import { asUrl, classifyPaste } from "../classify";
 import { PastedContent, runContentImport } from "../flows/content";
 import { importRawPage, runUrlImport, UrlImportError } from "../flows/url";
@@ -72,7 +71,7 @@ function describeError(error: UrlImportError | FileImportError): {
 }
 
 function ImportModal() {
-	const opened = useAppSelector(selectIsImportModalOpened);
+	const { opened, close } = useAppModal("import");
 	const currentElement = useAppSelector(selectCurrentElement);
 	const dispatch = useAppDispatch();
 	const navigate = useNavigate();
@@ -108,12 +107,12 @@ function ImportModal() {
 	function handleClose() {
 		cancelledRef.current = true;
 		reset();
-		dispatch(closeImportModal());
+		close();
 	}
 
 	function handleSuccess() {
 		reset();
-		dispatch(closeImportModal());
+		close();
 	}
 
 	async function runImport(

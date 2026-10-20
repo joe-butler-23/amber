@@ -25,7 +25,7 @@ import { formatRelativeDueDate } from "../../../utils/formatRelativeDueDate";
 import { formatPriorityPercentile } from "../../../utils/formatPriorityPercentile";
 import { ElementId } from "../../../types/elements/elementId";
 import { dueIsoFor, hasDue } from "../../../utils/elementDue";
-import { openPriorityModal } from "../../../stores/app/appReducer";
+import { openModal } from "../../../stores/app/appReducer";
 import { commandIcon } from "../../../commands/commandIcon";
 import AutosizeTextInput from "../../../components/AutosizeTextInput/AutosizeTextInput";
 import ElementProfileRow from "../../Study/components/ElementProfileRow";
@@ -158,7 +158,7 @@ function ElementInfoPanel() {
 						<AppTooltip label="Set priority">
 							<ActionIcon
 								variant="subtle"
-								onClick={() => dispatch(openPriorityModal())}>
+								onClick={() => dispatch(openModal("priority"))}>
 								{commandIcon("open-priority")}
 							</ActionIcon>
 						</AppTooltip>

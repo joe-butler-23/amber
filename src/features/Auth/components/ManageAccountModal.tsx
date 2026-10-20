@@ -2,10 +2,7 @@ import { LockIcon, UserIcon, WarningIcon } from "@phosphor-icons/react";
 import SectionedModal, {
 	ModalSection,
 } from "../../../components/AppModal/SectionedModal";
-import useAppDispatch from "../../../hooks/useAppDispatch";
-import useAppSelector from "../../../hooks/useAppSelector";
-import { closeManageAccountModal } from "../../../stores/app/appReducer";
-import { selectIsManageAccountModalOpened } from "../../../stores/app/appSelectors";
+import { useAppModal } from "../../../hooks/useAppModal";
 import ProfileTab from "./ProfileTab";
 import PasswordTab from "./PasswordTab";
 import DangerZoneTab from "./DangerZoneTab";
@@ -32,13 +29,12 @@ const SECTIONS: ModalSection[] = [
 ];
 
 function ManageAccountModal() {
-	const opened = useAppSelector(selectIsManageAccountModalOpened);
-	const dispatch = useAppDispatch();
+	const { opened, close } = useAppModal("manageAccount");
 
 	return (
 		<SectionedModal
 			opened={opened}
-			onClose={() => dispatch(closeManageAccountModal())}
+			onClose={close}
 			title="Manage account"
 			navAriaLabel="Open account navigation"
 			sections={SECTIONS}

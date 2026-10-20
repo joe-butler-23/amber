@@ -21,12 +21,10 @@ import AppTooltip from "../../../components/AppTooltip/AppTooltip";
 import ConfirmModal from "../../../components/AppModal/ConfirmModal";
 import AiPromptDto from "../../../api/aiIntegration/dto/aiPromptDto";
 import useAiPrompts from "../hooks/useAiPrompts";
-import useAppDispatch from "../../../hooks/useAppDispatch";
+import { useAppModal } from "../../../hooks/useAppModal";
 import useAppSelector from "../../../hooks/useAppSelector";
-import { closeAiPromptLibraryModal } from "../../../stores/app/appReducer";
 import {
 	selectAiPromptLibraryNewPromptRequest,
-	selectIsAiPromptLibraryModalOpened,
 } from "../../../stores/app/appSelectors";
 import { useShortcutDisplay } from "../../../commands/useShortcutDisplay";
 import {
@@ -52,12 +50,10 @@ interface Draft {
 
 /** Opened through `openAiPromptLibraryModal`, from the AI panel or the command palette. */
 function AiPromptLibraryModal() {
-	const opened = useAppSelector(selectIsAiPromptLibraryModalOpened);
+	const { opened, close: onClose } = useAppModal("aiPromptLibrary");
 	const newPromptRequest = useAppSelector(
 		selectAiPromptLibraryNewPromptRequest,
 	);
-	const dispatch = useAppDispatch();
-	const onClose = () => dispatch(closeAiPromptLibraryModal());
 	const {
 		prompts,
 		load,

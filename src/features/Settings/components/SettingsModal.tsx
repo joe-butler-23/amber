@@ -3,10 +3,7 @@ import { AiIcon } from "../../../config/icons";
 import SectionedModal, {
 	ModalSection,
 } from "../../../components/AppModal/SectionedModal";
-import useAppDispatch from "../../../hooks/useAppDispatch";
-import useAppSelector from "../../../hooks/useAppSelector";
-import { closeSettingsModal } from "../../../stores/app/appReducer";
-import { selectIsSettingsModalOpened } from "../../../stores/app/appSelectors";
+import { useAppModal } from "../../../hooks/useAppModal";
 import AppearanceTab from "./AppearanceTab";
 import DataTab from "./DataTab";
 import AboutTab from "./AboutTab";
@@ -40,13 +37,12 @@ const SECTIONS: ModalSection[] = [
 ];
 
 function SettingsModal() {
-	const opened = useAppSelector(selectIsSettingsModalOpened);
-	const dispatch = useAppDispatch();
+	const { opened, close } = useAppModal("settings");
 
 	return (
 		<SectionedModal
 			opened={opened}
-			onClose={() => dispatch(closeSettingsModal())}
+			onClose={close}
 			title="Settings"
 			navAriaLabel="Open settings navigation"
 			sections={SECTIONS}

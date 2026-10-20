@@ -2,23 +2,27 @@ import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { loadVirtualKeyboardSuppressed } from "./virtualKeyboardStorage";
 
 export type AuthModalTab = "sign-in" | "sign-up";
+export type ModalName =
+	| "import"
+	| "studyProfile"
+	| "settings"
+	| "priority"
+	| "dueDate"
+	| "shortcuts"
+	| "aiPromptLibrary"
+	| "studySessionSettings"
+	| "auth"
+	| "verifyEmail"
+	| "manageAccount";
+
+type SimpleModalName = Exclude<ModalName, "auth" | "aiPromptLibrary">;
 
 export interface AppState {
 	startedInitialStateLoading: boolean;
-	importModalOpened: boolean;
-	studyProfileModalOpened: boolean;
-	settingsModalOpened: boolean;
-	priorityModalOpened: boolean;
-	dueDateModalOpened: boolean;
-	shortcutsModalOpened: boolean;
-	aiPromptLibraryModalOpened: boolean;
+	openModals: Partial<Record<ModalName, true>>;
 	/** Bumped on each request to start a blank new prompt in the library, even while it's open. */
 	aiPromptLibraryNewPromptRequest: number;
-	studySessionSettingsModalOpened: boolean;
-	authModalOpened: boolean;
 	authModalInitialTab: AuthModalTab;
-	verifyEmailModalOpened: boolean;
-	manageAccountModalOpened: boolean;
 	/** When true the editor never asks for the on-screen keyboard, so a touch
 	 * user can select text and make extracts without it covering the page. */
 	virtualKeyboardSuppressed: boolean;
@@ -26,19 +30,9 @@ export interface AppState {
 
 const initialState: AppState = {
 	startedInitialStateLoading: false,
-	importModalOpened: false,
-	studyProfileModalOpened: false,
-	settingsModalOpened: false,
-	priorityModalOpened: false,
-	dueDateModalOpened: false,
-	shortcutsModalOpened: false,
-	aiPromptLibraryModalOpened: false,
+	openModals: {},
 	aiPromptLibraryNewPromptRequest: 0,
-	studySessionSettingsModalOpened: false,
-	authModalOpened: false,
 	authModalInitialTab: "sign-in",
-	verifyEmailModalOpened: false,
-	manageAccountModalOpened: false,
 	virtualKeyboardSuppressed: loadVirtualKeyboardSuppressed(),
 };
 
@@ -49,80 +43,26 @@ const appSlice = createSlice({
 		markStartLoadingOfInitialState: state => {
 			state.startedInitialStateLoading = true;
 		},
-		openImportModal: state => {
-			state.importModalOpened = true;
+		openModal: (state, action: PayloadAction<SimpleModalName>) => {
+			state.openModals[action.payload] = true;
 		},
-		closeImportModal: state => {
-			state.importModalOpened = false;
-		},
-		openStudyProfileModal: state => {
-			state.studyProfileModalOpened = true;
-		},
-		closeStudyProfileModal: state => {
-			state.studyProfileModalOpened = false;
-		},
-		openSettingsModal: state => {
-			state.settingsModalOpened = true;
-		},
-		closeSettingsModal: state => {
-			state.settingsModalOpened = false;
-		},
-		openPriorityModal: state => {
-			state.priorityModalOpened = true;
-		},
-		closePriorityModal: state => {
-			state.priorityModalOpened = false;
-		},
-		openDueDateModal: state => {
-			state.dueDateModalOpened = true;
-		},
-		closeDueDateModal: state => {
-			state.dueDateModalOpened = false;
-		},
-		openShortcutsModal: state => {
-			state.shortcutsModalOpened = true;
-		},
-		closeShortcutsModal: state => {
-			state.shortcutsModalOpened = false;
+		closeModal: (state, action: PayloadAction<ModalName>) => {
+			delete state.openModals[action.payload];
 		},
 		openAiPromptLibraryModal: (
 			state,
 			action: PayloadAction<{ newPrompt?: boolean } | undefined>,
 		) => {
-			state.aiPromptLibraryModalOpened = true;
+			state.openModals.aiPromptLibrary = true;
 			if (action.payload?.newPrompt)
 				state.aiPromptLibraryNewPromptRequest += 1;
-		},
-		closeAiPromptLibraryModal: state => {
-			state.aiPromptLibraryModalOpened = false;
-		},
-		openStudySessionSettingsModal: state => {
-			state.studySessionSettingsModalOpened = true;
-		},
-		closeStudySessionSettingsModal: state => {
-			state.studySessionSettingsModalOpened = false;
 		},
 		openAuthModal: (
 			state,
 			action: PayloadAction<AuthModalTab | undefined>,
 		) => {
-			state.authModalOpened = true;
+			state.openModals.auth = true;
 			state.authModalInitialTab = action.payload ?? "sign-in";
-		},
-		closeAuthModal: state => {
-			state.authModalOpened = false;
-		},
-		openVerifyEmailModal: state => {
-			state.verifyEmailModalOpened = true;
-		},
-		closeVerifyEmailModal: state => {
-			state.verifyEmailModalOpened = false;
-		},
-		openManageAccountModal: state => {
-			state.manageAccountModalOpened = true;
-		},
-		closeManageAccountModal: state => {
-			state.manageAccountModalOpened = false;
 		},
 		setVirtualKeyboardSuppressed: (
 			state,
@@ -137,27 +77,9 @@ export default appSlice.reducer;
 
 export const {
 	markStartLoadingOfInitialState,
-	openImportModal,
-	closeImportModal,
-	openStudyProfileModal,
-	closeStudyProfileModal,
-	openSettingsModal,
-	closeSettingsModal,
-	openPriorityModal,
-	closePriorityModal,
-	openDueDateModal,
-	closeDueDateModal,
-	openShortcutsModal,
-	closeShortcutsModal,
+	openModal,
+	closeModal,
 	openAiPromptLibraryModal,
-	closeAiPromptLibraryModal,
-	openStudySessionSettingsModal,
-	closeStudySessionSettingsModal,
 	openAuthModal,
-	closeAuthModal,
-	openVerifyEmailModal,
-	closeVerifyEmailModal,
-	openManageAccountModal,
-	closeManageAccountModal,
 	setVirtualKeyboardSuppressed,
 } = appSlice.actions;
