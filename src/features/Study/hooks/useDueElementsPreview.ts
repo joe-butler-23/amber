@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useWindowEvent } from "@mantine/hooks";
 import { ELEMENT_CREATED_EVENT } from "../../../api/elements/events/elementCreatedEvent";
 import { ELEMENT_DUE_CHANGED_EVENT } from "../../../api/study/events/elementDueChangedEvent";
@@ -9,10 +9,7 @@ import useAppSelector from "../../../hooks/useAppSelector";
 import { useTauriEvent } from "../../../hooks/useTauriEvent";
 import { queueLoaded } from "../../../stores/study/studyReducer";
 import { selectStudyStatus } from "../../../stores/study/studySelectors";
-import {
-	defaultGlobalSyncEventManager,
-	ListenerType,
-} from "../../../stores/sync/managers/syncEventManager";
+import { selectSyncRevision } from "../../../stores/sync/syncSelector";
 import { PRIORITY_CHANGED } from "../../../types/events/priorityChangedEvent";
 import { STUDY_SESSION_SETTINGS_CHANGED } from "../../../types/events/studySessionSettingsChangedEvent";
 
@@ -22,22 +19,37 @@ import { STUDY_SESSION_SETTINGS_CHANGED } from "../../../types/events/studySessi
 export function useDueElementsPreview() {
 	const dispatch = useAppDispatch();
 	const status = useAppSelector(selectStudyStatus);
+	const syncRevision = useAppSelector(selectSyncRevision);
+	const libraryGeneration = useAppSelector(state => state.app.libraryGeneration);
+	const libraryChanging = useAppSelector(state => state.app.libraryChanging);
 	const { callApi } = useApi();
 
 	const isStudying = status === "studying";
 
 	function refresh() {
-		void callApi(async () => {
-			const queue = await getDueElements();
-			dispatch(queueLoaded(queue));
-		});
+		void callApi(() =>
+			dispatch(async (dispatch, getState) => {
+				if (getState().app.libraryChanging) return;
+				const generation = getState().app.libraryGeneration;
+				const queue = await getDueElements();
+				if (getState().app.libraryGeneration === generation)
+					dispatch(queueLoaded(queue));
+			}),
+		);
 	}
 
 	useEffect(() => {
 		if (isStudying) return;
 		refresh();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isStudying, callApi, dispatch]);
+	}, [
+		isStudying,
+		syncRevision,
+		libraryGeneration,
+		libraryChanging,
+		callApi,
+		dispatch,
+	]);
 
 	useTauriEvent(ELEMENT_CREATED_EVENT, () => {
 		if (isStudying) return;
@@ -58,22 +70,4 @@ export function useDueElementsPreview() {
 		if (isStudying) return;
 		refresh();
 	});
-
-	const refreshOnSync = useCallback(() => {
-		if (!isStudying) refresh();
-		return Promise.resolve();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isStudying, callApi, dispatch]);
-
-	useEffect(() => {
-		defaultGlobalSyncEventManager.addListener(
-			ListenerType.PostSyncComplete,
-			refreshOnSync,
-		);
-		return () =>
-			defaultGlobalSyncEventManager.removeListener(
-				ListenerType.PostSyncComplete,
-				refreshOnSync,
-			);
-	}, [refreshOnSync]);
 }

@@ -1,3 +1,5 @@
+import { syncRefreshed } from "../sync/syncReducer";
+import { beginLibraryChange } from "../app/appReducer";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
 	AnyElementDto,
@@ -108,6 +110,17 @@ const elementsSlice = createSlice({
 				...action.payload,
 			};
 		},
+	},
+	extraReducers: builder => {
+		builder.addCase(beginLibraryChange, state => {
+			state.loadVersion++;
+			state.isDetailsLoading = false;
+		});
+		builder.addCase(syncRefreshed, (state, { payload }) => {
+			if (payload.tree) state.tree = payload.tree;
+			state.error = payload.treeError ?? null;
+			state.isLoading = false;
+		});
 	},
 });
 

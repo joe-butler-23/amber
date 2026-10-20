@@ -80,12 +80,14 @@ function OriginSection({
 	const dispatch = useAppDispatch();
 	const { callApi } = useApi();
 	const bibliographicalSources = useAppSelector(selectBibliographicalSources);
+	const libraryGeneration = useAppSelector(state => state.app.libraryGeneration);
+	const libraryChanging = useAppSelector(state => state.app.libraryChanging);
 	const selectedBibliographicalSource =
 		details?.bibliographicalSource ?? null;
 
 	useEffect(() => {
 		void dispatch(loadBibliographicalSourcesAction());
-	}, [dispatch]);
+	}, [dispatch, libraryGeneration, libraryChanging]);
 
 	function refreshDetails() {
 		return dispatch(loadElementDetailsAction(elementId));

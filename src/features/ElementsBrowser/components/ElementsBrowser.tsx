@@ -9,8 +9,6 @@ import {
 	ElementFilterField,
 } from "../../../api/savedSearches/dto/elementFilter";
 import { ElementsBrowserLocationState } from "../../../types/elements/elementsBrowserLocationState";
-import { BibliographicalSourceResponseDto } from "../../../api/bibliographicalSources/dto/bibliographicalSourceDto";
-import { listBibliographicalSources } from "../../../api/bibliographicalSources/api/bibliographicalSourcesApi";
 import { StudyProfileDto } from "../../../api/study/dto/studyProfileDto";
 import { listStudyProfiles } from "../../../api/study/api/studyProfileApi";
 import { SavedSearchResponseDto } from "../../../api/savedSearches/dto/savedSearchResponseDto";
@@ -19,10 +17,11 @@ import { searchElements } from "../../../api/search/api/searchApi";
 import { SearchElementResultDto } from "../../../api/search/dto/searchElementResultDto";
 import { ElementId } from "../../../types/elements/elementId";
 import useApi from "../../../hooks/useApi";
-import {
-	defaultGlobalSyncEventManager,
-	ListenerType,
-} from "../../../stores/sync/managers/syncEventManager";
+import useAppSelector from "../../../hooks/useAppSelector";
+import useAppDispatch from "../../../hooks/useAppDispatch";
+import { selectBibliographicalSources } from "../../../stores/bibliographicalSources/bibliographicalSourcesSelectors";
+import { loadBibliographicalSourcesAction } from "../../../stores/bibliographicalSources/bibliographicalSourcesActions";
+import { selectSyncRevision } from "../../../stores/sync/syncSelector";
 import { SEARCH_DEBOUNCE_MS } from "../config/constants";
 import { createDefaultFilter } from "../utils/createDefaultFilter";
 import { elementKey } from "../../../utils/elementKey";
@@ -47,9 +46,8 @@ export default function ElementsBrowser() {
 	>(locationState?.elementsBrowser?.loadedSavedSearchId ?? null);
 	const [justAddedId, setJustAddedId] = useState<string | null>(null);
 
-	const [sources, setSources] = useState<BibliographicalSourceResponseDto[]>(
-		[],
-	);
+	const sources = useAppSelector(selectBibliographicalSources);
+	const dispatch = useAppDispatch();
 	const [profiles, setProfiles] = useState<StudyProfileDto[]>([]);
 	const [savedSearches, setSavedSearches] = useState<
 		SavedSearchResponseDto[]
@@ -62,22 +60,27 @@ export default function ElementsBrowser() {
 		locationState?.elementsBrowser?.selectedIds ?? [],
 	);
 	const { callApi, errorMessage } = useApi();
+	const syncRevision = useAppSelector(selectSyncRevision);
+	const libraryGeneration = useAppSelector(state => state.app.libraryGeneration);
+	const libraryChanging = useAppSelector(state => state.app.libraryChanging);
 	const [debouncedFilters] = useDebouncedValue(filters, SEARCH_DEBOUNCE_MS);
 	// Searches are fired on every filter edit and can resolve out of order, so
 	// only the most recently started one is allowed to publish its results.
 	const latestSearchId = useRef(0);
 
 	function loadSupportingLists() {
-		void listBibliographicalSources().then(setSources);
+		if (libraryChanging) return;
+		void dispatch(loadBibliographicalSourcesAction());
 		void listStudyProfiles().then(setProfiles);
 		void listSavedSearches().then(setSavedSearches);
 	}
 
 	useEffect(() => {
 		loadSupportingLists();
-	}, []);
+	}, [syncRevision, libraryGeneration, libraryChanging, dispatch]);
 
 	function runSearch() {
+		if (libraryChanging) return;
 		const searchId = ++latestSearchId.current;
 		void callApi(() =>
 			searchElements({ filters: debouncedFilters, sort }),
@@ -91,28 +94,13 @@ export default function ElementsBrowser() {
 	useEffect(() => {
 		runSearch();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [debouncedFilters, sort]);
-
-	// Results, and the sources/profiles/saved searches feeding the filter UI,
-	// can go stale after a sync pulls in changes from another device.
-	useEffect(() => {
-		function refreshOnSync() {
-			loadSupportingLists();
-			runSearch();
-			return Promise.resolve();
-		}
-
-		defaultGlobalSyncEventManager.addListener(
-			ListenerType.PostSyncComplete,
-			refreshOnSync,
-		);
-		return () =>
-			defaultGlobalSyncEventManager.removeListener(
-				ListenerType.PostSyncComplete,
-				refreshOnSync,
-			);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [debouncedFilters, sort]);
+	}, [
+		debouncedFilters,
+		sort,
+		syncRevision,
+		libraryGeneration,
+		libraryChanging,
+	]);
 
 	function updateFilters(next: ElementFilter[]) {
 		setFilters(next);

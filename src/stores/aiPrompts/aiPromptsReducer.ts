@@ -1,3 +1,5 @@
+import { syncRefreshed } from "../sync/syncReducer";
+import { beginLibraryChange, libraryChanged } from "../app/appReducer";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import AiPromptDto from "../../api/aiIntegration/dto/aiPromptDto";
 
@@ -38,6 +40,15 @@ const aiPromptsSlice = createSlice({
 		removeAiPrompt: (state, action: PayloadAction<string>) => {
 			state.prompts = state.prompts.filter(p => p.id !== action.payload);
 		},
+	},
+	extraReducers: builder => {
+		builder.addCase(beginLibraryChange, () => initialState);
+		builder.addCase(libraryChanged, () => initialState);
+		builder.addCase(syncRefreshed, (state, { payload }) => {
+			if (!payload.prompts) return;
+			state.prompts = payload.prompts;
+			state.loaded = true;
+		});
 	},
 });
 

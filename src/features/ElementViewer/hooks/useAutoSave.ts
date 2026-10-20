@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { notifications } from "@mantine/notifications";
 import { AUTO_SAVE_DELAY_IN_MILLISECONDS } from "../../../config/constants";
-import {
-	defaultGlobalSyncEventManager,
-	ListenerType,
-} from "../../../stores/sync/managers/syncEventManager";
 import { defaultCloseRequestedEventManager } from "../../../managers/closeRequestedEventManager";
 import errorToString from "../../../utils/errorToString";
 
@@ -68,10 +64,6 @@ export default function useAutoSave(
 			defaultCloseRequestedEventManager.addHandler(
 				"save pending content",
 				{ cb: flushPendingSaves, priority: 0 },
-			);
-			defaultGlobalSyncEventManager.addListener(
-				ListenerType.PreSyncStart,
-				flushPendingSaves,
 			);
 			window.addEventListener("beforeunload", event => {
 				if (pending.size || running) event.preventDefault();

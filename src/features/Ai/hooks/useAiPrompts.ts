@@ -14,6 +14,8 @@ import { selectAiPrompts } from "../../../stores/aiPrompts/aiPromptsSelectors";
 export default function useAiPrompts() {
 	const dispatch = useAppDispatch();
 	const prompts = useAppSelector(selectAiPrompts);
+	const libraryGeneration = useAppSelector(state => state.app.libraryGeneration);
+	const libraryChanging = useAppSelector(state => state.app.libraryChanging);
 	const { callApi, errorMessage, clearErrorMessage, isSendingRequest } =
 		useApi();
 
@@ -28,7 +30,7 @@ export default function useAiPrompts() {
 
 	const load = useCallback(
 		() => run(() => dispatch(loadAiPromptsAction())),
-		[run, dispatch],
+		[run, dispatch, libraryGeneration, libraryChanging],
 	);
 
 	const savePrompt = useCallback(

@@ -1,3 +1,5 @@
+import { syncRefreshed } from "../sync/syncReducer";
+import { beginLibraryChange, libraryChanged } from "../app/appReducer";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { BibliographicalSourceResponseDto } from "../../api/bibliographicalSources/dto/bibliographicalSourceDto";
 
@@ -17,8 +19,11 @@ const bibliographicalSourcesSlice = createSlice({
 	name: "bibliographicalSources",
 	initialState,
 	reducers: {
-		setBibliographicalSourcesLoading: state => {
-			state.isLoading = true;
+		setBibliographicalSourcesLoading: (
+			state,
+			action: PayloadAction<boolean | undefined>,
+		) => {
+			state.isLoading = action.payload ?? true;
 		},
 		setBibliographicalSources: (
 			state,
@@ -43,6 +48,16 @@ const bibliographicalSourcesSlice = createSlice({
 				s => s.id !== action.payload,
 			);
 		},
+	},
+	extraReducers: builder => {
+		builder.addCase(beginLibraryChange, () => initialState);
+		builder.addCase(libraryChanged, () => initialState);
+		builder.addCase(syncRefreshed, (state, { payload }) => {
+			state.isLoading = false;
+			if (!payload.sources) return;
+			state.bibliographicalSources = payload.sources;
+			state.loaded = true;
+		});
 	},
 });
 

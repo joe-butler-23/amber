@@ -19,6 +19,8 @@ type SimpleModalName = Exclude<ModalName, "auth" | "aiPromptLibrary">;
 
 export interface AppState {
 	startedInitialStateLoading: boolean;
+	libraryGeneration: number;
+	libraryChanging: boolean;
 	openModals: Partial<Record<ModalName, true>>;
 	/** Bumped on each request to start a blank new prompt in the library, even while it's open. */
 	aiPromptLibraryNewPromptRequest: number;
@@ -30,6 +32,8 @@ export interface AppState {
 
 const initialState: AppState = {
 	startedInitialStateLoading: false,
+	libraryGeneration: 0,
+	libraryChanging: false,
 	openModals: {},
 	aiPromptLibraryNewPromptRequest: 0,
 	authModalInitialTab: "sign-in",
@@ -40,6 +44,17 @@ const appSlice = createSlice({
 	name: "app",
 	initialState,
 	reducers: {
+		beginLibraryChange: state => {
+			state.libraryGeneration++;
+			state.libraryChanging = true;
+		},
+		libraryChanged: state => {
+			state.libraryGeneration++;
+			state.libraryChanging = false;
+		},
+		finishLibraryChange: state => {
+			state.libraryChanging = false;
+		},
 		markStartLoadingOfInitialState: state => {
 			state.startedInitialStateLoading = true;
 		},
@@ -76,6 +91,9 @@ const appSlice = createSlice({
 export default appSlice.reducer;
 
 export const {
+	beginLibraryChange,
+	libraryChanged,
+	finishLibraryChange,
 	markStartLoadingOfInitialState,
 	openModal,
 	closeModal,

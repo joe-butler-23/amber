@@ -152,6 +152,7 @@ const studySlice = createSlice({
 		// Lets the sidebar preview due elements before a session starts,
 		// without affecting status/counts/etc.
 		queueLoaded: (state, action: PayloadAction<DueElementDto[]>) => {
+			if (state.status === "studying") return;
 			state.queue = action.payload;
 		},
 		// Restarts the shown-answer/timer state whenever the displayed

@@ -11,11 +11,9 @@ import {
 } from "../../../config/icons";
 import useApi from "../../../hooks/useApi";
 import useAppSelector from "../../../hooks/useAppSelector";
+import useAppDispatch from "../../../hooks/useAppDispatch";
 import { selectElementTree } from "../../../stores/elements/elementsSelectors";
-import {
-	defaultGlobalSyncEventManager,
-	ListenerType,
-} from "../../../stores/sync/managers/syncEventManager";
+import { selectSyncRevision } from "../../../stores/sync/syncSelector";
 import { formatStudyDuration } from "../../../utils/formatStudyDuration";
 import ActivityHeatmap from "./ActivityHeatmap";
 import StatCard from "./StatCard";
@@ -27,20 +25,29 @@ export default function HomeStatistics() {
 	);
 	// Trashing and restoring reload the tree, and change the due forecast.
 	const elementTree = useAppSelector(selectElementTree);
+	const syncRevision = useAppSelector(selectSyncRevision);
+	const libraryGeneration = useAppSelector(state => state.app.libraryGeneration);
+	const libraryChanging = useAppSelector(state => state.app.libraryChanging);
+	const dispatch = useAppDispatch();
 
 	const load = useCallback(
 		() =>
-			callApi(getHomeStatistics).then(result => {
-				if (!result) return;
-				setStatistics(result);
-				clearErrorMessage();
-			}),
-		[callApi, clearErrorMessage],
+			callApi(() =>
+				dispatch(async (_dispatch, getState) => {
+					if (getState().app.libraryChanging) return;
+					const generation = getState().app.libraryGeneration;
+					const result = await getHomeStatistics();
+					if (getState().app.libraryGeneration !== generation) return;
+					setStatistics(result);
+					clearErrorMessage();
+				}),
+			),
+		[callApi, clearErrorMessage, dispatch],
 	);
 
 	useEffect(() => {
 		void load();
-	}, [load, elementTree]);
+	}, [load, elementTree, syncRevision, libraryGeneration, libraryChanging]);
 
 	// "Today" and the heatmap's year roll over at midnight.
 	useEffect(() => {
@@ -48,18 +55,6 @@ export default function HomeStatistics() {
 		const timeout = setTimeout(() => void load(), msUntilMidnight);
 		return () => clearTimeout(timeout);
 	}, [load, statistics]);
-
-	useEffect(() => {
-		defaultGlobalSyncEventManager.addListener(
-			ListenerType.PostSyncComplete,
-			load,
-		);
-		return () =>
-			defaultGlobalSyncEventManager.removeListener(
-				ListenerType.PostSyncComplete,
-				load,
-			);
-	}, [load]);
 
 	if (errorMessage && !statistics) {
 		return (

@@ -1,3 +1,4 @@
+import { syncRefreshed } from "../sync/syncReducer";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { TrashedElementDto } from "../../api/trash/dto/trashedElementDto";
 
@@ -33,6 +34,13 @@ const trashSlice = createSlice({
 		clearTrashError: state => {
 			state.error = null;
 		},
+	},
+	extraReducers: builder => {
+		builder.addCase(syncRefreshed, (state, { payload }) => {
+			if (payload.trash) state.items = payload.trash;
+			state.error = payload.trashError ?? null;
+			state.isLoading = false;
+		});
 	},
 });
 

@@ -60,39 +60,32 @@ export function signIn(
 	username: string,
 	password: string,
 ) {
-	return async function (dispatch: AppDispatch): Promise<void> {
-		const userInformation = await signInApi(username, password);
-		await dispatch(reloadApplicationState(navigate, userInformation));
-	};
+	return reloadApplicationState(navigate, () => signInApi(username, password));
 }
 
 export function signInWithGoogle(navigate: NavigateFunction) {
-	return async function (dispatch: AppDispatch): Promise<void> {
-		const userInformation = await signInWithGoogleApi();
-		await dispatch(reloadApplicationState(navigate, userInformation));
-	};
+	return reloadApplicationState(navigate, signInWithGoogleApi);
 }
 
 export function signUp(navigate: NavigateFunction, request: SignUpRequestDto) {
-	return async function (dispatch: AppDispatch): Promise<void> {
-		const userInformation = await signUpApi(request);
-		await dispatch(reloadApplicationState(navigate, userInformation));
-	};
+	return reloadApplicationState(navigate, () => signUpApi(request));
 }
 
 export function signOut(navigate: NavigateFunction) {
 	return async function (dispatch: AppDispatch): Promise<void> {
 		try {
-			await signOutApi();
+			await dispatch(
+				reloadApplicationState(navigate, async dispatch => {
+					await signOutApi();
+					clearCachedUserInformation();
+					dispatch(setLoggedOf());
+				}),
+			);
 		} catch (e) {
 			// eslint-disable-next-line no-console
 			console.error(e);
 			notifications.show({ message: errorToString(e), color: "red" });
-			return;
 		}
-		clearCachedUserInformation();
-		dispatch(setLoggedOf());
-		await dispatch(reloadApplicationState(navigate));
 	};
 }
 
@@ -127,10 +120,9 @@ export function updateUserPassword(oldPassword: string, newPassword: string) {
 }
 
 export function deleteAccount(navigate: NavigateFunction) {
-	return async function (dispatch: AppDispatch): Promise<void> {
+	return reloadApplicationState(navigate, async dispatch => {
 		await deleteUserApi();
 		clearCachedUserInformation();
 		dispatch(setLoggedOf());
-		await dispatch(reloadApplicationState(navigate));
-	};
+	});
 }

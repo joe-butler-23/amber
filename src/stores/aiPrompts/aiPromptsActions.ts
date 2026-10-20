@@ -16,16 +16,11 @@ import { selectAiPromptsLoaded } from "./aiPromptsSelectors";
 
 export function loadAiPromptsAction() {
 	return async (dispatch: AppDispatch, getState: () => RootState) => {
-		if (selectAiPromptsLoaded(getState())) return;
-		dispatch(setAiPrompts(await listAiPrompts()));
-	};
-}
-
-/** Reloads the prompts after a sync, unless they were never loaded (the first load fetches them anyway). */
-export function refreshAiPromptsAction() {
-	return async (dispatch: AppDispatch, getState: () => RootState) => {
-		if (!selectAiPromptsLoaded(getState())) return;
-		dispatch(setAiPrompts(await listAiPrompts()));
+		if (getState().app.libraryChanging || selectAiPromptsLoaded(getState())) return;
+		const generation = getState().app.libraryGeneration;
+		const prompts = await listAiPrompts();
+		if (getState().app.libraryGeneration === generation)
+			dispatch(setAiPrompts(prompts));
 	};
 }
 

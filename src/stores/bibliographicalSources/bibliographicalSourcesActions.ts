@@ -22,18 +22,21 @@ import { selectBibliographicalSourcesLoaded } from "./bibliographicalSourcesSele
 
 export function loadBibliographicalSourcesAction() {
 	return async (dispatch: AppDispatch, getState: () => RootState) => {
-		if (selectBibliographicalSourcesLoaded(getState())) return;
+		if (
+			getState().app.libraryChanging ||
+			selectBibliographicalSourcesLoaded(getState())
+		)
+			return;
+		const generation = getState().app.libraryGeneration;
 		dispatch(setBibliographicalSourcesLoading());
-		const bibliographicalSources = await listBibliographicalSources();
-		dispatch(setBibliographicalSources(bibliographicalSources));
-	};
-}
-
-export function refreshBibliographicalSourcesAction() {
-	return async (dispatch: AppDispatch) => {
-		dispatch(setBibliographicalSourcesLoading());
-		const bibliographicalSources = await listBibliographicalSources();
-		dispatch(setBibliographicalSources(bibliographicalSources));
+		try {
+			const sources = await listBibliographicalSources();
+			if (getState().app.libraryGeneration === generation)
+				dispatch(setBibliographicalSources(sources));
+		} finally {
+			if (getState().app.libraryGeneration === generation)
+				dispatch(setBibliographicalSourcesLoading(false));
+		}
 	};
 }
 

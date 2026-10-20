@@ -13,6 +13,9 @@ import {
 	selectStartedInitialStateLoading,
 } from "./appSelectors";
 import {
+	beginLibraryChange,
+	libraryChanged,
+	finishLibraryChange,
 	markStartLoadingOfInitialState,
 	setVirtualKeyboardSuppressed,
 } from "./appReducer";
@@ -31,35 +34,41 @@ export function initialLoadApplicationState() {
 	};
 }
 
-/** A common action that reloads the application state,
- * as if you have refreshed the web page.*/
+/** Owns native library changes and reloading their views, including failed attempts. */
 export function reloadApplicationState(
 	navigate: NavigateFunction,
-	userInformationDto?: UserInformationDto,
+	change?: (dispatch: AppDispatch) => Promise<UserInformationDto | void>,
 ) {
-	return async function (dispatch: AppDispatch): Promise<void> {
-		await loadAppState(dispatch, navigate, userInformationDto);
+	return async function (dispatch: AppDispatch, getState: () => RootState) {
+		if (getState().app.libraryChanging)
+			throw new Error("A library change is already in progress.");
+		dispatch(beginLibraryChange());
+		let generation = getState().app.libraryGeneration;
+		try {
+			const userInformation = await change?.(dispatch);
+			dispatch(libraryChanged());
+			generation = getState().app.libraryGeneration;
+			await loadAppState(dispatch, navigate, userInformation || undefined);
+		} finally {
+			if (getState().app.libraryGeneration === generation)
+				dispatch(finishLibraryChange());
+		}
 	};
 }
 
-/** Persists a new database directory and reloads the application state:
- * the backend reconnects to the database in the new directory, so its contents
- * must be reloaded. */
+/** The backend reconnects to the selected directory before its views reload. */
 export function changeDatabaseDirectory(
 	directory: string,
 	navigate: NavigateFunction,
 ) {
-	return async function (dispatch: AppDispatch): Promise<void> {
+	return reloadApplicationState(navigate, async dispatch => {
 		await flushPendingSaves();
 		await dispatch(
 			saveSettings(
-				buildUpdateSettingsRequest({
-					baseDatabaseDirectory: directory,
-				}),
+				buildUpdateSettingsRequest({ baseDatabaseDirectory: directory }),
 			),
 		);
-		await dispatch(reloadApplicationState(navigate));
-	};
+	});
 }
 
 /** Turns the on-screen keyboard suppression on or off, remembering the choice
