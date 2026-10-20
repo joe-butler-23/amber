@@ -6,7 +6,6 @@ use injector_derive::ScopeInjectable;
 use super::pending_buffer::PendingBuffer;
 use super::{apply, fk_repair, push_pull, register};
 use crate::generated_code::ChangeBatch;
-use crate::infrastructure::value_objects::db_pool::DbPool;
 use crate::infrastructure::value_objects::db_transaction::DbTransaction;
 use crate::sync::errors::SyncError;
 use crate::sync::hlc::Hlc;
@@ -18,9 +17,6 @@ use crate::sync::value_objects::granularity::Granularity;
 pub struct SqliteSyncStore {
     tx: Arc<DbTransaction>,
     pending: Arc<PendingBuffer>,
-    /// Only for the HLC clock of the database behind this transaction, which
-    /// merging remote cells has to advance past every HLC it observes.
-    db_pool: Arc<DbPool>,
 }
 
 #[async_trait]
@@ -65,14 +61,13 @@ impl SyncStore for SqliteSyncStore {
     }
 
     async fn apply_remote(&self, batch: ChangeBatch, is_last_page: bool) -> Result<(), SyncError> {
-        let sync_clock = self.db_pool.sync_clock().await;
         let mut guard = self.tx.lock().await;
         apply::apply_remote(
             guard.as_mut(),
             batch,
             is_last_page,
             &self.pending,
-            sync_clock.get(),
+            self.tx.library.clock.get(),
         )
         .await
     }

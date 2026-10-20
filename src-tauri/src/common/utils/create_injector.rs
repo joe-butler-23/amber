@@ -464,11 +464,10 @@ fn register_post_sync_tasks(injector: &mut Injector) {
 pub fn register_scoped_tx(injector: &mut Injector) {
     injector.register_scope_factory::<DbTransaction>(|scope| {
         Box::pin(async move {
-            let db_pool = scope.resolve::<DbPool>().await;
-            let pool = db_pool.pool().await;
-            let tx = pool.begin().await.expect("Cannot create a new transaction");
-            let db_transaction = DbTransaction::new(Mutex::new(tx));
-            Arc::new(db_transaction)
+            let library = scope.resolve::<DbPool>().await.current().await;
+            let tx = library.pool.begin().await
+                .expect("Cannot create a new transaction");
+            Arc::new(DbTransaction::new(tx, library))
         })
     });
 }

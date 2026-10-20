@@ -30,16 +30,6 @@ impl DatabaseConnectionManager for SqliteDatabaseConnectionManager {
         register_sync_tables_on_pool(&pool)
             .await
             .map_err(|err| DatabaseConnectionManagerError(Box::new(err)))?;
-        let new_tx = pool
-            .begin()
-            .await
-            .map_err(|err| DatabaseConnectionManagerError(Box::new(err)))?;
-        let old_tx = std::mem::replace(&mut *self.tx.lock().await, new_tx);
-        old_tx
-            .commit()
-            .await
-            .map_err(|err| DatabaseConnectionManagerError(Box::new(err)))?;
-
         // Old scopes finish against the retained source; the last handle closes its pool.
         self.pool.set_pool(pool, clock).await;
         Ok(())
@@ -51,9 +41,10 @@ impl DatabaseConnectionManager for SqliteDatabaseConnectionManager {
                 .await
                 .map_err(|err| DatabaseConnectionManagerError(Box::new(err)))?;
         }
+        let library = self.pool.current().await;
         sqlx::query("VACUUM main INTO ?1")
             .bind(path.to_string_lossy().as_ref())
-            .execute(&*self.pool.pool().await)
+            .execute(&library.pool)
             .await
             .map_err(|err| DatabaseConnectionManagerError(Box::new(err)))?;
         Ok(())

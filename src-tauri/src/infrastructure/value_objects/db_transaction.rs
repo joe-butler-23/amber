@@ -1,15 +1,24 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
+use std::sync::Arc;
 
 use sqlx::{Sqlite, Transaction};
 use tokio::sync::Mutex;
 
+use super::db_pool::Library;
+
 pub type SqliteTransaction = Transaction<'static, Sqlite>;
 
-pub struct DbTransaction(Mutex<SqliteTransaction>);
+pub struct DbTransaction {
+    pub library: Arc<Library>,
+    tx: Mutex<SqliteTransaction>,
+}
 
 impl DbTransaction {
-    pub fn new(mutex: Mutex<SqliteTransaction>) -> Self {
-        Self(mutex)
+    pub fn new(tx: SqliteTransaction, library: Arc<Library>) -> Self {
+        Self {
+            library,
+            tx: Mutex::new(tx),
+        }
     }
 }
 
@@ -17,12 +26,6 @@ impl Deref for DbTransaction {
     type Target = Mutex<SqliteTransaction>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for DbTransaction {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &self.tx
     }
 }

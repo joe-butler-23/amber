@@ -3,7 +3,6 @@ use sqlx::Row;
 use injector::injector_scope::InjectorScope;
 
 use crate::generated_code::{CellChange, ChangeBatch};
-use crate::infrastructure::value_objects::db_pool::DbPool;
 use crate::infrastructure::value_objects::db_transaction::DbTransaction;
 use crate::sync::errors::SyncError;
 use crate::sync::hlc::{DeviceId, Hlc};
@@ -23,10 +22,10 @@ fn far_future_ms() -> u64 {
 /// The device id the test database's own clock stamps cells with.
 async fn local_device_id(scope: &InjectorScope<'_>) -> String {
     scope
-        .resolve::<DbPool>()
+        .resolve::<DbTransaction>()
         .await
-        .sync_clock()
-        .await
+        .library
+        .clock
         .get()
         .device_id()
         .to_string()
@@ -1602,10 +1601,10 @@ async fn apply_remote_advances_local_clock_past_remote_hlc() {
     // Assert
 
     let actual = scope
-        .resolve::<DbPool>()
+        .resolve::<DbTransaction>()
         .await
-        .sync_clock()
-        .await
+        .library
+        .clock
         .get()
         .now();
     assert!(actual > remote_hlc);
