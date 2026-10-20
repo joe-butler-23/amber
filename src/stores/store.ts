@@ -6,7 +6,6 @@ import appReducer from "./app/appReducer.ts";
 import elementsReducer from "./elements/elementsReducer";
 import studyReducer from "./study/studyReducer";
 import bibliographicalSourcesReducer from "./bibliographicalSources/bibliographicalSourcesReducer";
-import elementDetailsReducer from "./elementDetails/elementDetailsReducer";
 import searchReducer from "./search/searchReducer";
 import trashReducer from "./trash/trashReducer";
 import aiReducer from "./aiContext/aiReducer";
@@ -20,7 +19,6 @@ const reducers = combineReducers({
 	elements: elementsReducer,
 	study: studyReducer,
 	bibliographicalSources: bibliographicalSourcesReducer,
-	elementDetails: elementDetailsReducer,
 	search: searchReducer,
 	trash: trashReducer,
 	ai: aiReducer,

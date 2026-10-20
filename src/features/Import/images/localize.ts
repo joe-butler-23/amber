@@ -10,6 +10,7 @@ type PreparedImage =
 	{ ok: true; dataUri: string } | { ok: false; originalUrl: string };
 
 const MAX_DATA_URI_BYTES = 2 * 1024 * 1024;
+const IMAGE_BATCH_SIZE = 4;
 
 /** The only module that knows how imported images are stored: as assets, referenced by `amber-asset:<id>`. */
 export async function localizeImage(
@@ -20,34 +21,35 @@ export async function localizeImage(
 	return localized.get(absoluteUrl)!;
 }
 
-/** Downloads and compresses the images in parallel, then stores them all in one transaction. */
+/** Bounds concurrent download/compression work and releases image data after each stored batch. */
 export async function localizeImages(
 	absoluteUrls: string[],
 	referer: string | null,
 ): Promise<Map<string, LocalizedImage>> {
-	const prepared = await Promise.all(
-		absoluteUrls.map(url => prepareImage(url, referer)),
-	);
-	const toStore = absoluteUrls.flatMap((url, index) => {
-		const image = prepared[index];
-		return image.ok ? [{ url, dataUri: image.dataUri }] : [];
-	});
-	const srcs = await storeImages(toStore.map(image => image.dataUri));
-	const srcByUrl = new Map(
-		toStore.map((image, index) => [image.url, srcs[index]]),
-	);
-
-	return new Map(
-		absoluteUrls.map((url, index): [string, LocalizedImage] => {
-			const image = prepared[index];
-			if (!image.ok) return [url, image];
-			const src = srcByUrl.get(url);
-			return [
+	const result = new Map<string, LocalizedImage>();
+	for (
+		let offset = 0;
+		offset < absoluteUrls.length;
+		offset += IMAGE_BATCH_SIZE
+	) {
+		const batch = absoluteUrls.slice(offset, offset + IMAGE_BATCH_SIZE);
+		const prepared = await Promise.all(
+			batch.map(url => prepareImage(url, referer)),
+		);
+		const srcs = await storeImages(
+			prepared.flatMap(image => (image.ok ? [image.dataUri] : [])),
+		);
+		let successIndex = 0;
+		prepared.forEach((image, index) => {
+			const url = batch[index];
+			const src = image.ok ? srcs[successIndex++] : null;
+			result.set(
 				url,
 				src ? { ok: true, src } : { ok: false, originalUrl: url },
-			];
-		}),
-	);
+			);
+		});
+	}
+	return result;
 }
 
 async function prepareImage(

@@ -6,7 +6,7 @@ import useApi from "../../../hooks/useApi";
 import useAppDispatch from "../../../hooks/useAppDispatch";
 import { useTauriEvent } from "../../../hooks/useTauriEvent";
 import { openStudyProfileModal } from "../../../stores/app/appReducer";
-import { loadElementDetailsAction } from "../../../stores/elementDetails/elementDetailsActions";
+import { loadElementDetailsAction } from "../../../stores/elements/elementsActions";
 import { ElementId } from "../../../types/elements/elementId";
 import { commandIcon } from "../../../commands/commandIcon";
 import StudyProfileOption from "./StudyProfileOption";

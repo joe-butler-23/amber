@@ -27,3 +27,8 @@ export const selectCurrentElementIsTrashed = (state: RootState) => {
 		currentElement.data.meta.elementId,
 	);
 };
+
+export const selectCurrentElementDetails = (state: RootState) =>
+	state.elements.details;
+export const selectElementDetailsIsLoading = (state: RootState) =>
+	state.elements.isDetailsLoading;

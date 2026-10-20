@@ -116,75 +116,51 @@ function ImportModal() {
 		dispatch(closeImportModal());
 	}
 
-	async function startUrlImport(url: string) {
+	async function runImport(
+		label: string,
+		action: () => Promise<UrlImportError | FileImportError | null | void>,
+	) {
 		cancelledRef.current = false;
-		setPhase({ kind: "importing", label: "Fetching…" });
-
-		const error = await runUrlImport(url, await context());
-		if (cancelledRef.current) return;
-
-		if (error) {
-			setPhase({ kind: "error", ...describeError(error) });
-			return;
-		}
-
-		handleSuccess();
-	}
-
-	async function startContentImport(input: PastedContent) {
-		cancelledRef.current = false;
-		setPhase({ kind: "importing", label: "Importing…" });
-
+		setPhase({ kind: "importing", label });
 		try {
-			await runContentImport(input, await context());
+			const error = await action();
 			if (cancelledRef.current) return;
-			handleSuccess();
-		} catch (err) {
-			if (cancelledRef.current) return;
-			setPhase({ kind: "error", message: errorToString(err) });
+			if (error) setPhase({ kind: "error", ...describeError(error) });
+			else handleSuccess();
+		} catch (error) {
+			if (!cancelledRef.current)
+				setPhase({ kind: "error", message: errorToString(error) });
 		}
 	}
 
-	async function startFileImport(files: File[]) {
-		cancelledRef.current = false;
-		const willExtract = !isPdf || extractPdfContent;
-		setPhase({
-			kind: "importing",
-			label: willExtract ? "Extracting…" : "Importing…",
-		});
-
-		const error = await runFileImport(
-			files,
-			await context(),
-			extractPdfContent,
-			progress => {
-				if (cancelledRef.current) return;
-				setPhase({ kind: "importing", label: "Extracting…", progress });
-			},
+	const startUrlImport = (url: string) =>
+		runImport("Fetching…", async () => runUrlImport(url, await context()));
+	const startContentImport = (input: PastedContent) =>
+		runImport("Importing…", async () =>
+			runContentImport(input, await context()),
 		);
-		if (cancelledRef.current) return;
-
-		if (error) {
-			setPhase({ kind: "error", ...describeError(error) });
-			return;
-		}
-
-		handleSuccess();
-	}
-
-	async function startRawImport(rawHtml: string, sourceUrl: string) {
-		cancelledRef.current = false;
-		setPhase({ kind: "importing", label: "Importing…" });
-
-		try {
-			await importRawPage(rawHtml, sourceUrl, await context());
-			if (cancelledRef.current) return;
-			handleSuccess();
-		} catch (err) {
-			if (cancelledRef.current) return;
-			setPhase({ kind: "error", message: errorToString(err) });
-		}
-	}
+	const startRawImport = (html: string, url: string) =>
+		runImport("Importing…", async () =>
+			importRawPage(html, url, await context()),
+		);
+	const startFileImport = (files: File[]) =>
+		runImport(
+			!isPdf || extractPdfContent ? "Extracting…" : "Importing…",
+			async () =>
+				runFileImport(
+					files,
+					await context(),
+					extractPdfContent,
+					progress => {
+						if (!cancelledRef.current)
+							setPhase({
+								kind: "importing",
+								label: "Extracting…",
+								progress,
+							});
+					},
+				),
+		);
 
 	function handleSubmit(e: SyntheticEvent<HTMLFormElement>) {
 		e.preventDefault();

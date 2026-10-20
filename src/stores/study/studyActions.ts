@@ -35,11 +35,17 @@ import errorToString from "../../utils/errorToString";
 const SESSION_HORIZON_MS = 2 * 60 * 1000;
 
 export function startStudySession(navigate: NavigateFunction) {
-	return async (dispatch: AppDispatch): Promise<boolean> => {
+	return async (
+		dispatch: AppDispatch,
+		getState: () => RootState,
+	): Promise<boolean> => {
 		const queue = await getDueElements();
 		if (queue.length === 0) return false;
 		dispatch(sessionStarted(queue));
-		await navigateToElement(queue[0]?.elementId, navigate, dispatch);
+		const elementId = queue[0].elementId;
+		if (!(await loadSessionElement(elementId, dispatch, getState)))
+			return false;
+		navigateToElement(elementId, navigate);
 		return true;
 	};
 }
@@ -60,6 +66,7 @@ export function gradeCardAction(
 			rating,
 			durationMs,
 		);
+		if (!currentSessionElement(getState(), elementId)) return;
 		dispatch(cardGraded());
 
 		const dueInMs = new Date(review.due).getTime() - Date.now();
@@ -148,12 +155,15 @@ function elapsedSinceShown(state: RootState): number | null {
 // The element the session is on, which is always the one being viewed.
 function currentSessionElement(
 	state: RootState,
+	expected?: ElementId,
 ): { elementId: ElementId; index: number } | null {
 	if (state.study.status !== "studying") return null;
 
 	const index = selectStudyIndex(state);
 	const elementId = state.study.queue[index]?.elementId;
-	return elementId ? { elementId, index } : null;
+	return elementId && (!expected || isSameElement(elementId, expected))
+		? { elementId, index }
+		: null;
 }
 
 async function currentSchedule(current: {
@@ -177,6 +187,7 @@ export function nextLearningAssetAction(
 	return async (dispatch: AppDispatch, getState: () => RootState) => {
 		const currentIndex = selectStudyIndex(getState());
 		await nextLearningAsset(elementId, elapsedSinceShown(getState()));
+		if (!currentSessionElement(getState(), elementId)) return;
 		dispatch(learningAssetAdvanced({ elementType: elementId.type }));
 		await advanceSession(
 			dispatch,
@@ -214,6 +225,7 @@ export function finishLearningAssetAction(
 	return async (dispatch: AppDispatch, getState: () => RootState) => {
 		const currentIndex = selectStudyIndex(getState());
 		await finishLearningAsset(elementId, elapsedSinceShown(getState()));
+		if (!currentSessionElement(getState(), elementId)) return;
 		dispatch(learningAssetFinished({ elementType: elementId.type }));
 		await advanceSession(
 			dispatch,
@@ -278,7 +290,7 @@ async function advanceSession(
 
 	const nextElement = queueAfterCompletion[nextIndex].elementId;
 
-	await dispatch(loadCurrentElementAction(nextElement));
+	if (!(await loadSessionElement(nextElement, dispatch, getState))) return;
 
 	dispatch(
 		sessionAdvanced({
@@ -286,8 +298,7 @@ async function advanceSession(
 		}),
 	);
 
-	const state: StudySessionLocationState = { studySessionNav: true };
-	void navigate(paths.element(nextElement.type, nextElement.id), { state });
+	navigateToElement(nextElement, navigate);
 }
 
 function removeElement(
@@ -312,13 +323,28 @@ export function stopStudySessionAction() {
 	};
 }
 
-async function navigateToElement(
-	element: ElementId | undefined,
-	navigate: NavigateFunction,
+// A completed backend review must not leave an actionable footer behind if
+// loading the next element fails. A newer session's queue stays untouched.
+async function loadSessionElement(
+	element: ElementId,
 	dispatch: AppDispatch,
-) {
-	if (!element) return;
-	await dispatch(loadCurrentElementAction(element));
+	getState: () => RootState,
+): Promise<boolean> {
+	const queue = getState().study.queue;
+	let loaded = false;
+	try {
+		loaded = await dispatch(loadCurrentElementAction(element));
+		return loaded && getState().study.queue === queue;
+	} catch (error) {
+		notifications.show({ message: errorToString(error), color: "red" });
+		return false;
+	} finally {
+		if (!loaded && getState().study.queue === queue)
+			dispatch(sessionStopped());
+	}
+}
+
+function navigateToElement(element: ElementId, navigate: NavigateFunction) {
 	const state: StudySessionLocationState = { studySessionNav: true };
 	void navigate(paths.element(element.type, element.id), { state });
 }

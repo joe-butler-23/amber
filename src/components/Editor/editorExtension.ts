@@ -1,4 +1,4 @@
-import { CodeShikiExtension } from "@lexical/code-shiki";
+import { CodeExtension, CodeIndentExtension } from "@lexical/code-core";
 import {
 	ClickAfterLastBlockExtension,
 	SelectBlockExtension,
@@ -9,7 +9,6 @@ import { LinkExtension } from "@lexical/link";
 import { ListExtension } from "@lexical/list";
 import { RichTextExtension } from "@lexical/rich-text";
 import { TableExtension } from "@lexical/table";
-import { configExtension } from "lexical";
 import { ClozeHiddenNode } from "./plugins/ClozePlugin/ClozeHiddenNode";
 import { EquationNode } from "./plugins/EquationPlugin/EquationNode";
 import { HighlightNode } from "./plugins/HighlightPlugin/HighlightNode";
@@ -47,8 +46,6 @@ export const editorExtensionDependencies = [
 	TabIndentationExtension,
 	ClickAfterLastBlockExtension,
 	SelectBlockExtension,
-	configExtension(CodeShikiExtension, {
-		// Only keeping it to get code block background color.
-		disabled: true,
-	}),
+	CodeExtension,
+	CodeIndentExtension,
 ];

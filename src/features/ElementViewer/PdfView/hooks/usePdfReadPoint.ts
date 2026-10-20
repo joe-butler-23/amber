@@ -3,7 +3,6 @@ import { useWindowEvent } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useScrollCapability } from "@embedpdf/plugin-scroll/react";
 import useAutoSave from "../../hooks/useAutoSave";
-import useApi from "../../../../hooks/useApi";
 import { updateReadPoint } from "../../../../api/elements/api/elementsApi";
 import { ReadPoint } from "../../../../types/elements/readPoint";
 import { READ_POINT_MANUAL_SET_REQUESTED } from "../../../../types/events/readPointManualSetRequestedEvent";
@@ -46,7 +45,7 @@ export function usePdfReadPoint({
 		currentPageRef.current = currentPage;
 	}, [currentPage]);
 
-	const lastSavedRef = useRef<ReadPoint>(initial);
+	const readPointRef = useRef<ReadPoint>(initial);
 	// Flipped to `true` once the initial restore has run (or had nothing to
 	// do), gating automatic saves off it so the restore scroll itself isn't
 	// recorded as the reader jumping back to page 1.
@@ -58,25 +57,17 @@ export function usePdfReadPoint({
 		"automatic",
 	);
 
-	const { callApi } = useApi();
-	const handleSave = useCallback(
-		async (content: string) => {
-			const readPoint = JSON.parse(content) as ReadPoint;
-			const last = lastSavedRef.current;
-			if (
-				last.split === readPoint.split &&
-				last.block === readPoint.block
-			) {
-				return;
-			}
-			lastSavedRef.current = readPoint;
-			await updateReadPoint({ learningAssetId, readPoint });
-		},
-		[learningAssetId],
+	const onContentUpdate = useAutoSave(
+		content =>
+			updateReadPoint({
+				learningAssetId,
+				readPoint: JSON.parse(content) as ReadPoint,
+			}),
+		JSON.stringify(initial),
 	);
-	const { onContentUpdate } = useAutoSave({ onSave: handleSave, callApi });
 	const persistReadPoint = useCallback(
 		(readPoint: ReadPoint) => {
+			readPointRef.current = readPoint;
 			onContentUpdate(() => JSON.stringify(readPoint));
 		},
 		[onContentUpdate],
@@ -139,7 +130,7 @@ export function usePdfReadPoint({
 	}, [persistReadPoint]);
 
 	const handleManualGoto = useCallback(() => {
-		const target = lastSavedRef.current;
+		const target = readPointRef.current;
 		if (target.split === NO_PDF_READ_POINT.split) {
 			notifications.show({ message: "No read point set" });
 			return;

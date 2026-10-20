@@ -1,3 +1,5 @@
+import { notifications } from "@mantine/notifications";
+import errorToString from "../utils/errorToString";
 import { useEffect } from "react";
 import { setCurrentElement } from "../stores/elements/elementsReducer";
 import { selectElementTree } from "../stores/elements/elementsSelectors";
@@ -18,6 +20,8 @@ export function useCurrentElementSync() {
 			return;
 		}
 		const id = { type: params.type, id: params.id } satisfies ElementId;
-		void dispatch(loadCurrentElementAction(id));
+		void dispatch(loadCurrentElementAction(id)).catch(error =>
+			notifications.show({ message: errorToString(error), color: "red" }),
+		);
 	}, [params?.type, params?.id, tree, dispatch]);
 }

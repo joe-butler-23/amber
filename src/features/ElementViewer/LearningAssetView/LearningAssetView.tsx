@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Center, Container, Loader } from "@mantine/core";
+import { Alert, Center, Container, Loader } from "@mantine/core";
 import { useWindowEvent } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { getLearningAssetSplitManifest } from "../../../api/elements/api/elementsApi";
@@ -61,6 +61,7 @@ export default function LearningAssetView({
 	const [contentWidth, containerRef] = useContentWidth();
 	const containerProps = useLineWidthContainerProps();
 
+	const [loadError, setLoadError] = useState<string | null>(null);
 	const [splits, setSplits] = useState<LearningAssetSplitMetaDto[] | null>(
 		null,
 	);
@@ -70,8 +71,8 @@ export default function LearningAssetView({
 			.then(manifest => {
 				if (!cancelled) setSplits(manifest);
 			})
-			.catch(() => {
-				if (!cancelled) setSplits([]);
+			.catch((error: unknown) => {
+				if (!cancelled) setLoadError(String(error));
 			});
 		return () => {
 			cancelled = true;
@@ -254,6 +255,13 @@ export default function LearningAssetView({
 			</Center>
 		);
 	}
+
+	if (loadError)
+		return (
+			<Alert color="red" title="Could not load this document">
+				{loadError}
+			</Alert>
+		);
 
 	return (
 		<Container ref={containerRef} {...containerProps} py="lg">

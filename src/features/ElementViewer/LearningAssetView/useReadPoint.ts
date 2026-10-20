@@ -2,7 +2,6 @@ import { RefObject, useCallback, useEffect, useRef } from "react";
 import { useWindowEvent } from "@mantine/hooks";
 import { LEARNING_ASSET_VIEWPORT_TOP_OFFSET_IN_PX } from "./learningAssetViewConstants";
 import useAutoSave from "../hooks/useAutoSave";
-import useApi from "../../../hooks/useApi";
 import { updateReadPoint } from "../../../api/elements/api/elementsApi";
 import { ReadPoint } from "../../../types/elements/readPoint";
 import { READ_POINT_MANUAL_SET_REQUESTED } from "../../../types/events/readPointManualSetRequestedEvent";
@@ -99,7 +98,7 @@ export function useReadPoint({
 	restoredRef,
 	onReadPointChange,
 }: Props): ReturnValue {
-	const lastSavedRef = useRef<ReadPoint>({
+	const readPointRef = useRef<ReadPoint>({
 		split: initial.split,
 		block: initial.block,
 	});
@@ -123,28 +122,17 @@ export function useReadPoint({
 		"automatic",
 	);
 
-	const { callApi } = useApi();
-	const handleSave = useCallback(
-		async (content: string) => {
-			const readPoint = JSON.parse(content) as ReadPoint;
-			const last = lastSavedRef.current;
-			if (
-				last.split === readPoint.split &&
-				last.block === readPoint.block
-			) {
-				return;
-			}
-			lastSavedRef.current = readPoint;
-			await updateReadPoint({ learningAssetId, readPoint });
-		},
-		[learningAssetId],
+	const onContentUpdate = useAutoSave(
+		content =>
+			updateReadPoint({
+				learningAssetId,
+				readPoint: JSON.parse(content) as ReadPoint,
+			}),
+		JSON.stringify(initial),
 	);
-	const { onContentUpdate } = useAutoSave({ onSave: handleSave, callApi });
-
-	// Captured eagerly rather than read at flush time: split editors tear
-	// down before flush runs, so a deferred DOM read would find no root.
 	const persistReadPoint = useCallback(
 		(readPoint: ReadPoint) => {
+			readPointRef.current = readPoint;
 			onContentUpdate(() => JSON.stringify(readPoint));
 		},
 		[onContentUpdate],
@@ -252,7 +240,7 @@ export function useReadPoint({
 		recordManualClearReadPoint,
 	);
 
-	const getCurrentReadPoint = useCallback(() => lastSavedRef.current, []);
+	const getCurrentReadPoint = useCallback(() => readPointRef.current, []);
 
 	return {
 		recordExtractReadPoint,

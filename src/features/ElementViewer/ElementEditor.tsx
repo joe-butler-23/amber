@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { Alert } from "@mantine/core";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
 import { EditorState, LexicalEditor } from "lexical";
@@ -13,7 +12,6 @@ import RootElementPlugin from "../../components/Editor/plugins/RootElementPlugin
 import ReadPointMarkerPlugin from "../../components/Editor/plugins/ReadPointMarkerPlugin";
 import CursorTrackerPlugin from "../../components/Editor/plugins/CursorTrackerPlugin";
 import SearchHighlightPlugin from "../../components/Editor/plugins/SearchHighlightPlugin/SearchHighlightPlugin";
-import useApi from "../../hooks/useApi";
 import { useImageOcclusionMenuItems } from "../ImageOcclusion/hooks/useImageOcclusionMenuItems";
 import { renderOcclusionOverlay } from "../ImageOcclusion/review/renderOcclusionOverlay";
 import useAutoSave from "./hooks/useAutoSave";
@@ -60,19 +58,8 @@ export default function ElementEditor({
 	search,
 	editorRef,
 }: ElementEditorProps) {
-	const { callApi, errorMessage, clearErrorMessage } = useApi();
 	const imageMenuItems = useImageOcclusionMenuItems();
-	const handleSave = useCallback(
-		async (content: string) => {
-			if (content === initialContent) return;
-			await onChange(content);
-		},
-		[onChange, initialContent],
-	);
-	const { onContentUpdate } = useAutoSave({
-		onSave: handleSave,
-		callApi,
-	});
+	const onContentUpdate = useAutoSave(onChange, initialContent);
 
 	// Serializing the whole document to JSON is expensive on large
 	// documents, so it is deferred to save time instead of running on
@@ -86,15 +73,6 @@ export default function ElementEditor({
 
 	return (
 		<>
-			{errorMessage && (
-				<Alert
-					color="red"
-					title={errorMessage}
-					withCloseButton
-					onClose={clearErrorMessage}
-					mb="sm"
-				/>
-			)}
 			<Editor
 				initialContent={initialContent}
 				onHighlightCreated={onHighlightCreated}

@@ -25,7 +25,6 @@ import { useCloseSidebarOnSmallScreenNavigation } from "../../../hooks/useCloseS
 import { useSessionScheduleChanges } from "../../Study/hooks/useSessionScheduleChanges";
 import { useStudySessionGuard } from "../../Study/hooks/useStudySessionGuard";
 import { useStudySessionSummaryToast } from "../../Study/hooks/useStudySessionSummaryToast";
-import Updater from "../../Updater/components/Updater";
 import CommandPalette from "../../../commands/CommandPalette";
 import ImageLightbox from "../../../components/ImageLightbox/ImageLightbox";
 import StudySessionBar from "../../Study/components/StudySessionBar.tsx";
@@ -239,7 +238,6 @@ function App() {
 						offset: false,
 					}}
 					padding="md">
-					{!mobile && <Updater />}
 					<CommandPalette />
 					<ImageLightbox />
 					<ImportModal />

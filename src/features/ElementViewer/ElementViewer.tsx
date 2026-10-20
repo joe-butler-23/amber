@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
-import CardElementViewer from "./CardElementViewer";
-import ExtractElementViewer from "./ExtractElementViewer";
+import ElementContentView from "./ElementContentView";
 import FindInPageBar from "./FindInPageBar";
 import FolderView from "./FolderView";
 import RemoveHighlightModal from "./RemoveHighlightModal";
@@ -9,11 +7,15 @@ import PdfLearningAssetView from "./PdfView/components/PdfLearningAssetView";
 import SearchHighlightOverlay from "../../components/Editor/plugins/SearchHighlightPlugin/SearchHighlightOverlay";
 import useAppSelector from "../../hooks/useAppSelector";
 import { selectCurrentElement } from "../../stores/elements/elementsSelectors";
-import { updateCard, updateExtract } from "../../api/elements/api/elementsApi";
 import { useElementViewerButtons } from "./hooks/useElementViewerButtons";
 import { useHighlightCreatedHandler } from "./hooks/useHighlightCreatedHandler";
 
 export default function ElementViewer() {
+	const version = useAppSelector(state => state.elements.contentVersion);
+	return <CurrentElementViewer key={version} />;
+}
+
+function CurrentElementViewer() {
 	const currentElement = useAppSelector(selectCurrentElement);
 	const elementId = currentElement?.data?.meta?.elementId;
 	const {
@@ -23,50 +25,6 @@ export default function ElementViewer() {
 		cancelHighlightRemoval,
 	} = useElementViewerButtons();
 	const handleHighlightCreated = useHighlightCreatedHandler(elementId);
-
-	const frontContentRef = useRef("");
-	const backContentRef = useRef("");
-
-	useEffect(() => {
-		if (currentElement?.type !== "card") return;
-		frontContentRef.current = currentElement.data.front;
-		backContentRef.current = currentElement.data.back;
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only reset refs when navigating to a different card
-	}, [elementId?.id]);
-
-	const handleChange = useCallback(
-		async (content: string) => {
-			if (elementId?.type !== "extract") return;
-			await updateExtract({ id: elementId.id, content });
-		},
-		[elementId],
-	);
-
-	const handleFrontChange = useCallback(
-		async (content: string) => {
-			if (elementId?.type !== "card") return;
-			frontContentRef.current = content;
-			await updateCard({
-				id: elementId.id,
-				front: content,
-				back: backContentRef.current,
-			});
-		},
-		[elementId],
-	);
-
-	const handleBackChange = useCallback(
-		async (content: string) => {
-			if (elementId?.type !== "card") return;
-			backContentRef.current = content;
-			await updateCard({
-				id: elementId.id,
-				front: frontContentRef.current,
-				back: content,
-			});
-		},
-		[elementId],
-	);
 
 	if (!currentElement || !elementId || currentElement.type === "folder") {
 		return <FolderView />;
@@ -95,16 +53,6 @@ export default function ElementViewer() {
 				onConfirm={confirmHighlightRemoval}
 				onClose={cancelHighlightRemoval}
 			/>
-			{currentElement.type === "card" && (
-				<CardElementViewer
-					elementId={elementId}
-					card={currentElement.data}
-					buttons={buttons}
-					onFrontChange={handleFrontChange}
-					onBackChange={handleBackChange}
-					onHighlightCreated={handleHighlightCreated}
-				/>
-			)}
 			{currentElement.type === "learningAsset" && (
 				<LearningAssetView
 					key={`learningAsset-${elementId.id}`}
@@ -115,12 +63,12 @@ export default function ElementViewer() {
 					onHighlightCreated={handleHighlightCreated}
 				/>
 			)}
-			{currentElement.type === "extract" && (
-				<ExtractElementViewer
-					elementId={elementId}
-					extract={currentElement.data}
+			{(currentElement.type === "card" ||
+				currentElement.type === "extract") && (
+				<ElementContentView
+					key={elementId.id}
+					element={currentElement.data}
 					buttons={buttons}
-					onChange={handleChange}
 					onHighlightCreated={handleHighlightCreated}
 				/>
 			)}

@@ -43,19 +43,16 @@ export function sync(options?: SyncOptions) {
 			dispatch(setIsSyncing(true));
 			await syncApi();
 			dispatch(setOnline());
+			await defaultGlobalSyncEventManager.notifyListeners(
+				ListenerType.PostSyncComplete,
+			);
 			notifications.show({ message: "Sync complete", autoClose: 1000 });
 		} catch (e) {
 			// eslint-disable-next-line no-console
 			console.error(e);
 			notifications.show({ message: errorToString(e), color: "red" });
 		} finally {
-			await defaultGlobalSyncEventManager.notifyListeners(
-				ListenerType.PreSyncComplete,
-			);
 			dispatch(setIsSyncing(false));
-			await defaultGlobalSyncEventManager.notifyListeners(
-				ListenerType.PostSyncComplete,
-			);
 		}
 	};
 }

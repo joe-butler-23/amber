@@ -1,5 +1,5 @@
 import { ELEMENT_DUE_CHANGED_EVENT } from "../api/study/events/elementDueChangedEvent";
-import { loadElementDetailsAction } from "../stores/elementDetails/elementDetailsActions";
+import { loadElementDetailsAction } from "../stores/elements/elementsActions";
 import { selectCurrentElement } from "../stores/elements/elementsSelectors";
 import useAppDispatch from "./useAppDispatch";
 import useAppSelector from "./useAppSelector";

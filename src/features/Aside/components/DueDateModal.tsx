@@ -8,9 +8,11 @@ import useAppDispatch from "../../../hooks/useAppDispatch";
 import useAppSelector from "../../../hooks/useAppSelector";
 import { closeDueDateModal } from "../../../stores/app/appReducer";
 import { selectIsDueDateModalOpened } from "../../../stores/app/appSelectors";
-import { loadElementDetailsAction } from "../../../stores/elementDetails/elementDetailsActions";
-import { selectCurrentElementDetails } from "../../../stores/elementDetails/elementDetailsSelectors";
-import { selectCurrentElement } from "../../../stores/elements/elementsSelectors";
+import { loadElementDetailsAction } from "../../../stores/elements/elementsActions";
+import {
+	selectCurrentElementDetails,
+	selectCurrentElement,
+} from "../../../stores/elements/elementsSelectors";
 import { ElementId } from "../../../types/elements/elementId";
 import {
 	fromDateInputValue,

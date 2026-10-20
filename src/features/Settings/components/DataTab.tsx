@@ -1,3 +1,4 @@
+import useApi from "../../../hooks/useApi";
 import { useNavigate } from "react-router";
 import { Button, Group, NumberInput, Stack, Switch } from "@mantine/core";
 import { FolderOpenIcon } from "@phosphor-icons/react";
@@ -19,6 +20,7 @@ const RETENTION_MAX_DAYS = 99;
 function DataTab() {
 	const settings = useAppSelector(selectSettings);
 	const dispatch = useAppDispatch();
+	const { callApi, errorMessage, isSendingRequest } = useApi();
 	const navigate = useNavigate();
 
 	if (!settings) return null;
@@ -46,7 +48,9 @@ function DataTab() {
 
 		if (typeof selected !== "string") return;
 
-		await dispatch(changeDatabaseDirectory(selected, navigate));
+		await callApi(() =>
+			dispatch(changeDatabaseDirectory(selected, navigate)),
+		);
 	}
 
 	return (
@@ -55,18 +59,20 @@ function DataTab() {
 				{!isMobile() && (
 					<FieldLabel
 						label="Database directory"
-						tooltip="The folder where your database file is stored. Changing it reconnects the app to a database in the new location."
+						tooltip="Opens the library in the chosen folder. If there is no library there, copies a snapshot of this library first. The original is kept for recovery."
 					/>
 				)}
 				<Group align="flex-end" gap="sm" wrap="nowrap">
 					<AutosizeTextInput
 						readOnly
 						value={settings.baseDatabaseDirectory}
+						error={errorMessage}
 						style={{ flex: 1 }}
 					/>
 					<Button
 						variant="default"
 						leftSection={<FolderOpenIcon />}
+						loading={isSendingRequest}
 						onClick={() => void handleChangeDirectory()}>
 						Change…
 					</Button>

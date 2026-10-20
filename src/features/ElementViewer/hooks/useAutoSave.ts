@@ -1,131 +1,93 @@
 import { useCallback, useEffect, useId, useRef } from "react";
-import useBeforeUnload from "../../../hooks/useBeforeUnload";
+import { notifications } from "@mantine/notifications";
 import { AUTO_SAVE_DELAY_IN_MILLISECONDS } from "../../../config/constants";
 import {
 	defaultGlobalSyncEventManager,
 	ListenerType,
 } from "../../../stores/sync/managers/syncEventManager";
 import { defaultCloseRequestedEventManager } from "../../../managers/closeRequestedEventManager";
-import { CallApiFn } from "../../../hooks/useApi";
+import errorToString from "../../../utils/errorToString";
 
-export const CLOSE_REQUESTED_HANDLER_NAME_PREFIX = "useAutoSave handler";
-
-interface Props {
-	onSave: (content: string) => Promise<void>;
-	onSaveComplete?: () => Promise<void>;
-	callApi: CallApiFn;
+interface PendingSave {
+	read: () => string | Promise<string>;
+	save: (content: string) => Promise<void>;
 }
+const pending = new Map<string, PendingSave>();
+let running: Promise<void> | null = null;
+let timeout: ReturnType<typeof setTimeout>;
+let registered = false;
 
-interface ReturnValue {
-	saveChanges: () => Promise<void>;
-	onContentUpdate: (getContent: () => string) => void;
-}
-
-/**
- * This hook is used to save an element's content automatically, with a
- * delay, after it gets updated.
- */
-function useAutoSave({ onSave, onSaveComplete, callApi }: Props): ReturnValue {
-	// Holds a getter for the latest content that is not yet saved. Producing
-	// the content (e.g. serializing the editor state to JSON) can be
-	// expensive on large documents, so it is deferred until a save actually
-	// happens instead of running on every update.
-	const pendingContent = useRef<(() => string) | null>(null);
-	const autoSaveTimeoutId = useRef<number>(null);
-	// Multiple ElementEditor instances (e.g. a card's front and back) can be
-	// mounted at once, each with their own useAutoSave instance, so the
-	// handler name must be unique per instance to avoid one instance's
-	// close-requested handler overwriting another's.
-	const closeRequestedHandlerName = `${CLOSE_REQUESTED_HANDLER_NAME_PREFIX}-${useId()}`;
-
-	const saveChanges = useCallback(async () => {
-		if (autoSaveTimeoutId.current !== null) {
-			clearTimeout(autoSaveTimeoutId.current);
-			autoSaveTimeoutId.current = null;
+// Pending writes outlive editors, so failed unmounts can still retry on sync/close.
+export function flushPendingSaves(): Promise<void> {
+	clearTimeout(timeout);
+	if (running) return running;
+	running = (async () => {
+		while (pending.size) {
+			const [id, entry] = pending.entries().next().value!;
+			await entry.save(await entry.read());
+			if (pending.get(id) === entry) pending.delete(id);
 		}
-
-		if (pendingContent.current === null) return;
-
-		await callApi(async () => {
-			const getContent = pendingContent.current!;
-			pendingContent.current = null;
-
-			await onSave(getContent());
-			await onSaveComplete?.();
-		});
-	}, [callApi, onSave, onSaveComplete]);
-
-	const handleContentUpdate = (getContent: () => string) => {
-		pendingContent.current = getContent;
-
-		if (autoSaveTimeoutId.current !== null) {
-			clearTimeout(autoSaveTimeoutId.current);
-			autoSaveTimeoutId.current = null;
-		}
-		autoSaveTimeoutId.current = setTimeout(() => {
-			void saveChanges();
-		}, AUTO_SAVE_DELAY_IN_MILLISECONDS);
-	};
-
-	// Used for saving changes before unmounting.
-	useEffect(() => {
-		return () => void saveChanges();
-	}, [saveChanges]);
-
-	// Used for saving changes before closing the app.
-	useEffect(() => {
-		defaultCloseRequestedEventManager.addHandler(
-			closeRequestedHandlerName,
-			{
-				cb: saveChanges,
-				// Must be executed at start!
-				priority: 0,
-			},
-		);
-		return () =>
-			defaultCloseRequestedEventManager.removeHandler(
-				closeRequestedHandlerName,
-			);
-	}, [closeRequestedHandlerName, saveChanges]);
-
-	// Used to save changes before syncing.
-	useEffect(() => {
-		defaultGlobalSyncEventManager.addListener(
-			ListenerType.PreSyncStart,
-			saveChanges,
-		);
-		return () =>
-			defaultGlobalSyncEventManager.removeListener(
-				ListenerType.PreSyncStart,
-				saveChanges,
-			);
-	}, [saveChanges]);
-
-	// Used to get the latest content after sync.
-	useEffect(() => {
-		if (!onSaveComplete) return;
-
-		defaultGlobalSyncEventManager.addListener(
-			ListenerType.PreSyncComplete,
-			onSaveComplete,
-		);
-		return () =>
-			defaultGlobalSyncEventManager.removeListener(
-				ListenerType.PreSyncComplete,
-				onSaveComplete,
-			);
-	}, [onSaveComplete]);
-
-	// Used to save changes before unloading.
-	useBeforeUnload(e => {
-		if (pendingContent.current !== null) e.preventDefault();
-		void saveChanges();
+	})().finally(() => {
+		running = null;
 	});
-
-	return {
-		saveChanges,
-		onContentUpdate: handleContentUpdate,
-	};
+	return running;
 }
 
-export default useAutoSave;
+function saveInBackground() {
+	void flushPendingSaves().catch(error =>
+		notifications.show({
+			message: `Changes are still unsaved: ${errorToString(error)}`,
+			color: "red",
+		}),
+	);
+}
+
+export default function useAutoSave(
+	onSave: (content: string) => Promise<void>,
+	initial?: string,
+) {
+	const id = useId();
+	const acknowledged = useRef(initial);
+	const saveRef = useRef(onSave);
+	useEffect(() => {
+		saveRef.current = onSave;
+	}, [onSave]);
+	useEffect(() => {
+		if (!registered) {
+			registered = true;
+			defaultCloseRequestedEventManager.addHandler(
+				"save pending content",
+				{ cb: flushPendingSaves, priority: 0 },
+			);
+			defaultGlobalSyncEventManager.addListener(
+				ListenerType.PreSyncStart,
+				flushPendingSaves,
+			);
+			window.addEventListener("beforeunload", event => {
+				if (pending.size || running) event.preventDefault();
+				saveInBackground();
+			});
+		}
+		return saveInBackground;
+	}, []);
+
+	return useCallback(
+		(read: () => string | Promise<string>) => {
+			const save = saveRef.current;
+			pending.set(id, {
+				read,
+				save: async content => {
+					if (content === acknowledged.current) return;
+					await save(content);
+					acknowledged.current = content;
+				},
+			});
+			clearTimeout(timeout);
+			timeout = setTimeout(
+				saveInBackground,
+				AUTO_SAVE_DELAY_IN_MILLISECONDS,
+			);
+		},
+		[id],
+	);
+}

@@ -1,3 +1,5 @@
+import { notifications } from "@mantine/notifications";
+import errorToString from "../utils/errorToString";
 import { useWindowEvent } from "@mantine/hooks";
 import { loadCurrentElementAction } from "../stores/elements/elementsActions";
 import { STUDY_SESSION_FINISHED } from "../types/events/studySessionFinishedEvent";
@@ -15,6 +17,8 @@ export function useStudySessionFinishedRefresh() {
 
 	useWindowEvent(STUDY_SESSION_FINISHED, () => {
 		if (!params) return;
-		void dispatch(loadCurrentElementAction(params));
+		void dispatch(loadCurrentElementAction(params)).catch(error =>
+			notifications.show({ message: errorToString(error), color: "red" }),
+		);
 	});
 }

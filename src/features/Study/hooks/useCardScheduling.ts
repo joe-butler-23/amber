@@ -1,3 +1,4 @@
+import useApi from "../../../hooks/useApi";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getCardScheduling } from "../../../api/study/api/studyApi";
 import { CardSchedulingDto } from "../../../api/study/dto/cardSchedulingDto";
@@ -7,6 +8,7 @@ import { scheduleAllRatings } from "../utils/cardScheduling";
 
 export interface CardScheduling {
 	preview: Record<Rating, CardReviewDto> | null;
+	errorMessage: string | null;
 	schedule: (rating: Rating) => CardReviewDto | null;
 }
 
@@ -19,6 +21,7 @@ export function useCardScheduling(
 	cardId: string | null,
 	shownAt: number | null,
 ): CardScheduling {
+	const { callApi, errorMessage } = useApi();
 	const [inputs, setInputs] = useState<CardSchedulingDto | null>(null);
 	const loadKey = cardId ? `${cardId}:${String(shownAt)}` : null;
 	const [trackedKey, setTrackedKey] = useState(loadKey);
@@ -34,14 +37,15 @@ export function useCardScheduling(
 		if (!cardId) return;
 
 		let cancelled = false;
-		void getCardScheduling(cardId).then(loaded => {
+		void callApi(async () => {
+			const loaded = await getCardScheduling(cardId);
 			if (!cancelled) setInputs(loaded);
 		});
 
 		return () => {
 			cancelled = true;
 		};
-	}, [cardId, shownAt]);
+	}, [cardId, shownAt, callApi]);
 
 	const preview = useMemo(
 		() =>
@@ -61,5 +65,5 @@ export function useCardScheduling(
 		[inputs],
 	);
 
-	return { preview, schedule };
+	return { preview, schedule, errorMessage };
 }

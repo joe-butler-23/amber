@@ -1,3 +1,4 @@
+import { notifications } from "@mantine/notifications";
 import {
 	createCard,
 	createExtract,
@@ -5,6 +6,7 @@ import {
 	createLearningAsset,
 	elementExists,
 	getElementById,
+	getElementDetails,
 	getElementTree,
 	moveElement,
 	MoveElementDto,
@@ -18,31 +20,67 @@ import { CreateFolderDto } from "../../types/elements/createFolderDto";
 import { CreateLearningAssetDto } from "../../types/elements/createLearningAssetDto";
 import { ElementId } from "../../types/elements/elementId";
 import errorToString from "../../utils/errorToString";
-import { AppDispatch } from "../store";
-import { loadElementDetailsAction } from "../elementDetails/elementDetailsActions";
+import { AppDispatch, RootState } from "../store";
 import {
-	setCurrentElement,
+	beginElementLoad,
+	setLoadedElement,
+	setDetailsLoading,
+	setCurrentElementDetails,
 	setCurrentElementMeta,
 	setTree,
 	setTreeError,
 	setTreeLoading,
 } from "./elementsReducer";
 
-// Shared by every place that needs `elements.currentElement` to reflect a
-// specific element right away (a route change, a study-session advance, a
-// post-sync refresh) rather than a later effect catching up to it. Resolves
-// to whether the element existed and was actually loaded.
-export function loadCurrentElementAction(elementId: ElementId) {
-	return async (dispatch: AppDispatch): Promise<boolean> => {
-		const exists = await elementExists(elementId);
-		if (!exists) return false;
-		await Promise.all([
-			getElementById(elementId).then(element =>
-				dispatch(setCurrentElement(element)),
-			),
-			dispatch(loadElementDetailsAction(elementId)),
+// Commit content and details together, only for the newest request.
+export function loadCurrentElementAction(
+	elementId: ElementId,
+	refreshContent = false,
+) {
+	return async (
+		dispatch: AppDispatch,
+		getState: () => RootState,
+	): Promise<boolean> => {
+		dispatch(beginElementLoad(refreshContent));
+		const version = getState().elements.loadVersion;
+		if (!(await elementExists(elementId))) return false;
+		const [element, details] = await Promise.all([
+			getElementById(elementId),
+			getElementDetails(elementId),
 		]);
+		if (getState().elements.loadVersion !== version) return false;
+		dispatch(setLoadedElement({ version, element, details }));
 		return true;
+	};
+}
+
+let detailsRequest = 0;
+export function loadElementDetailsAction(elementId: ElementId) {
+	return async (dispatch: AppDispatch, getState: () => RootState) => {
+		const { loadVersion, currentElement } = getState().elements;
+		if (
+			currentElement?.data.meta.elementId.id !== elementId.id ||
+			currentElement.type !== elementId.type
+		)
+			return;
+		const request = ++detailsRequest;
+		dispatch(setDetailsLoading(true));
+		try {
+			const details = await getElementDetails(elementId);
+			if (
+				request === detailsRequest &&
+				getState().elements.loadVersion === loadVersion
+			)
+				dispatch(setCurrentElementDetails(details));
+		} catch (error) {
+			notifications.show({ message: errorToString(error), color: "red" });
+		} finally {
+			if (
+				request === detailsRequest &&
+				getState().elements.loadVersion === loadVersion
+			)
+				dispatch(setDetailsLoading(false));
+		}
 	};
 }
 

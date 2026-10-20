@@ -13,7 +13,10 @@ export default function useOptimisticField<T>(source: T) {
 
 	function persist(next: T, action: () => Promise<unknown>) {
 		setValue(next);
-		void callApi(action).then(result => {
+		void callApi(async () => {
+			await action();
+			return true;
+		}).then(result => {
 			if (result === undefined) setValue(source);
 		});
 	}

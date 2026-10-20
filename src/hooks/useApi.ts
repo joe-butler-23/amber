@@ -12,6 +12,7 @@ export default function useApi() {
 
 	const callApi: CallApiFn = useCallback(async (cb, onFinally) => {
 		setIsSendingRequest(true);
+		setErrorMessage(null);
 
 		try {
 			return await cb();

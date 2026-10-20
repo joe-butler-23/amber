@@ -2,7 +2,6 @@ type SyncEventListenerCallback = () => Promise<unknown>;
 
 export enum ListenerType {
 	PreSyncStart,
-	PreSyncComplete,
 	PostSyncComplete,
 }
 

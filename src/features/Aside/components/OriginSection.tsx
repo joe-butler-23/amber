@@ -22,8 +22,10 @@ import {
 } from "../../../api/bibliographicalSources/dto/bibliographicalSourceDto";
 import { ElementDetailsResponseDto } from "../../../api/elements/dto/elementDetailsDto";
 import ElementSelect from "../../../components/ElementSelect/ElementSelect";
-import { setDerivedFromAction } from "../../../stores/elements/elementsActions";
-import { loadElementDetailsAction } from "../../../stores/elementDetails/elementDetailsActions";
+import {
+	setDerivedFromAction,
+	loadElementDetailsAction,
+} from "../../../stores/elements/elementsActions";
 import {
 	assignBibliographicalSourceAction,
 	createBibliographicalSourceAction,

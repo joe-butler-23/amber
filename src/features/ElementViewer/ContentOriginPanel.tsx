@@ -12,7 +12,7 @@ import {
 import { useLocalStorage } from "@mantine/hooks";
 import { MetaResponseDto } from "../../api/elements/dto/anyElementDto";
 import useAppSelector from "../../hooks/useAppSelector";
-import { selectCurrentElementDetails } from "../../stores/elementDetails/elementDetailsSelectors";
+import { selectCurrentElementDetails } from "../../stores/elements/elementsSelectors";
 import { paths } from "../../paths";
 import ElementNodeIcon from "../../components/ElementNodeIcon/ElementNodeIcon";
 import DisclosureCaret from "../../components/DisclosureCaret/DisclosureCaret";

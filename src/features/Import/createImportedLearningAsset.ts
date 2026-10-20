@@ -11,7 +11,7 @@ export async function createImportedLearningAsset(
 	bibliographicalSourceId?: string | null,
 ): Promise<string> {
 	const id = crypto.randomUUID();
-	await ctx.dispatch(
+	const created = await ctx.dispatch(
 		createLearningAssetAction({
 			id,
 			meta: {
@@ -24,5 +24,6 @@ export async function createImportedLearningAsset(
 			initialPriorityPosition: ctx.priorityPosition,
 		}),
 	);
+	if (!created) throw new Error("The document could not be saved.");
 	return id;
 }

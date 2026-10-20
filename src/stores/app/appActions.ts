@@ -1,3 +1,4 @@
+import { flushPendingSaves } from "../../features/ElementViewer/hooks/useAutoSave";
 import { NavigateFunction } from "react-router";
 import { loadSettings, saveSettings } from "../settings/settingsActions";
 import { buildUpdateSettingsRequest } from "../../api/settings/dto/updateSettingsRequestDto";
@@ -49,6 +50,7 @@ export function changeDatabaseDirectory(
 	navigate: NavigateFunction,
 ) {
 	return async function (dispatch: AppDispatch): Promise<void> {
+		await flushPendingSaves();
 		await dispatch(
 			saveSettings(
 				buildUpdateSettingsRequest({

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import useAutoSave from "../../hooks/useAutoSave";
+import { useEffect } from "react";
 import { notifications } from "@mantine/notifications";
 import {
 	AnnotationTransferItem,
@@ -36,80 +37,41 @@ export function usePdfAnnotationsPersistence(
 	learningAssetId: string,
 ) {
 	const { provides: annotation } = useAnnotationCapability();
-	const loadedRef = useRef(false);
-	// Bumped per write attempt; a write only applies if still latest by the
-	// time its export resolves, so an earlier one can't clobber a later.
-	const writeTokenRef = useRef(0);
+	const onContentUpdate = useAutoSave(highlightsJson =>
+		updatePdfHighlights({ learningAssetId, highlightsJson }),
+	);
 
 	useEffect(() => {
 		if (!annotation || !documentId) return;
-		loadedRef.current = false;
 		const scope = annotation.forDocument(documentId);
-
-		// A create event that fires before load resolves can't be persisted
-		// yet (see save() below); remember to save once loading finishes so
-		// it isn't silently lost.
-		let missedWriteWhileLoading = false;
-
-		function save() {
-			const token = ++writeTokenRef.current;
-			void scope
-				.exportAnnotations()
-				.toPromise()
-				.then(exported => {
-					if (writeTokenRef.current !== token) return;
-					const highlights = exported.filter(item =>
-						isPdfHighlightAnnotation(item.annotation),
-					);
-					return updatePdfHighlights({
-						learningAssetId,
-						highlightsJson: JSON.stringify(highlights),
-					});
-				})
-				.catch((error: unknown) =>
-					showHighlightError(
-						"Could not save this PDF's highlights.",
-						error,
-					),
-				);
-		}
-
 		let cancelled = false;
-		void getPdfHighlights(learningAssetId)
-			.then(({ highlightsJson }) => {
-				if (cancelled) return;
-				const items = JSON.parse(
-					highlightsJson,
-				) as AnnotationTransferItem[];
-				// `importAnnotations` dispatches straight into plugin state
-				// without emitting an event (unlike a real create), so there's
-				// nothing to echo-wait for — mark loaded once it's called.
-				scope.importAnnotations(items);
-				loadedRef.current = true;
-				if (missedWriteWhileLoading) save();
-			})
-			.catch((error: unknown) => {
-				if (cancelled) return;
-				// `loadedRef` stays false on purpose: writing back now would
-				// replace the highlights we failed to read with an empty set.
-				showHighlightError(
-					"Could not load this PDF's highlights — new highlights won't be saved.",
-					error,
+		const loaded = getPdfHighlights(learningAssetId).then(
+			({ highlightsJson }) => {
+				if (cancelled)
+					throw new Error("PDF closed before its highlights loaded");
+				scope.importAnnotations(
+					JSON.parse(highlightsJson) as AnnotationTransferItem[],
 				);
-			});
-
+			},
+		);
+		void loaded.catch(error =>
+			showHighlightError("Could not load this PDF's highlights.", error),
+		);
 		const unsubscribe = scope.onAnnotationEvent(event => {
 			if (event.type === "loaded") return;
-			if (!loadedRef.current) {
-				missedWriteWhileLoading = true;
-				return;
-			}
-			save();
+			onContentUpdate(async () => {
+				await loaded;
+				const exported = await scope.exportAnnotations().toPromise();
+				return JSON.stringify(
+					exported.filter(item =>
+						isPdfHighlightAnnotation(item.annotation),
+					),
+				);
+			});
 		});
-
 		return () => {
 			cancelled = true;
 			unsubscribe();
 		};
-	}, [annotation, documentId, learningAssetId]);
+	}, [annotation, documentId, learningAssetId, onContentUpdate]);
 }

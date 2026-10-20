@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Divider } from "@mantine/core";
+import { Alert, Button, Divider } from "@mantine/core";
 import {
 	getLearningAssetSplitContent,
 	updateLearningAsset,
@@ -62,24 +62,25 @@ export default function SplitSlot({
 	search,
 }: SplitSlotProps) {
 	const [content, setContent] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
 	const contentElementRef = useRef<HTMLDivElement | null>(null);
 
 	// Fetches once, the first time this slot enters the mount window. Later
 	// re-mounts reuse it, so `handleChange` keeps it current with local edits.
 	useEffect(() => {
-		if (!mounted || content !== null) return;
+		if (!mounted || content !== null || error) return;
 		let cancelled = false;
 		void getLearningAssetSplitContent({ learningAssetId, seq })
 			.then(loaded => {
 				if (!cancelled) setContent(loaded);
 			})
-			.catch(() => {
-				if (!cancelled) setContent("");
+			.catch((error: unknown) => {
+				if (!cancelled) setError(String(error));
 			});
 		return () => {
 			cancelled = true;
 		};
-	}, [mounted, learningAssetId, seq, content]);
+	}, [mounted, learningAssetId, seq, content, error]);
 
 	useEffect(() => {
 		if (mounted && content !== null) onContentReady(seq);
@@ -124,7 +125,12 @@ export default function SplitSlot({
 		<div ref={slotRef} data-seq={seq}>
 			{!isFirst && <Divider label={`Split ${splitNumber}`} my="lg" />}
 			<div ref={setContentElement}>
-				{showPlaceholder ? (
+				{error ? (
+					<Alert color="red" title="Could not load this split">
+						{error}
+						<Button onClick={() => setError(null)}>Retry</Button>
+					</Alert>
+				) : showPlaceholder ? (
 					<SplitPlaceholder height={height} />
 				) : (
 					<ElementEditor

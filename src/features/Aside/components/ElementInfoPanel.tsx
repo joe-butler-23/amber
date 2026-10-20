@@ -11,13 +11,15 @@ import { useEffect, useRef, useState } from "react";
 import { useDebouncedCallback } from "@mantine/hooks";
 import useAppSelector from "../../../hooks/useAppSelector";
 import useAppDispatch from "../../../hooks/useAppDispatch";
-import { selectCurrentElement } from "../../../stores/elements/elementsSelectors";
+import {
+	selectCurrentElement,
+	selectCurrentElementDetails,
+} from "../../../stores/elements/elementsSelectors";
 import {
 	updateElementTags,
 	updateIntervalMultiplier,
 } from "../../../api/elements/api/elementsApi";
 import { renameElementAction } from "../../../stores/elements/elementsActions";
-import { selectCurrentElementDetails } from "../../../stores/elementDetails/elementDetailsSelectors";
 import { selectElementRefreshCount } from "../../../stores/sync/syncSelector";
 import { formatRelativeDueDate } from "../../../utils/formatRelativeDueDate";
 import { formatPriorityPercentile } from "../../../utils/formatPriorityPercentile";
