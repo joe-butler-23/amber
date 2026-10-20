@@ -111,15 +111,15 @@ impl CardRepository for SqliteCardRepository {
     async fn update_content(
         &self,
         id: Uuid,
-        front: String,
-        back: String,
+        front: Option<String>,
+        back: Option<String>,
     ) -> Result<(), RepositoryError> {
-        let front_text = extract_plain_text(&front);
-        let back_text = extract_plain_text(&back);
+        let front_text = front.as_deref().map(extract_plain_text);
+        let back_text = back.as_deref().map(extract_plain_text);
         let mut tx = self.tx.lock().await;
         let tx = tx.as_mut();
         sqlx::query!(
-            "UPDATE cards SET front = $1, back = $2, front_text = $3, back_text = $4 WHERE id = $5",
+            "UPDATE cards SET front = COALESCE($1, front), back = COALESCE($2, back), front_text = COALESCE($3, front_text), back_text = COALESCE($4, back_text) WHERE id = $5",
             front,
             back,
             front_text,

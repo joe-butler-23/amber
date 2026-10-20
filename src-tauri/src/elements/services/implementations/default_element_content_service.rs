@@ -41,8 +41,14 @@ impl ElementContentService for DefaultElementContentService {
     }
 
     async fn update_card(&self, dto: UpdateCardDto) -> Result<(), RepositoryError> {
-        let front = self.asset_service.ingest_content(dto.front).await?;
-        let back = self.asset_service.ingest_content(dto.back).await?;
+        let front = match dto.front {
+            Some(content) => Some(self.asset_service.ingest_content(content).await?),
+            None => None,
+        };
+        let back = match dto.back {
+            Some(content) => Some(self.asset_service.ingest_content(content).await?),
+            None => None,
+        };
         self.card_repository
             .update_content(dto.id, front, back)
             .await

@@ -5,6 +5,6 @@ use uuid::Uuid;
 #[serde(rename_all = "camelCase")]
 pub struct UpdateCardDto {
     pub id: Uuid,
-    pub front: String,
-    pub back: String,
+    pub front: Option<String>,
+    pub back: Option<String>,
 }

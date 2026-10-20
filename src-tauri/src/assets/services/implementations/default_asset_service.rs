@@ -104,7 +104,9 @@ impl AssetService for DefaultAssetService {
                 let front = self.ingest_content(card.front.clone()).await?;
                 let back = self.ingest_content(card.back.clone()).await?;
                 if front != card.front || back != card.back {
-                    self.card_repository.update_content(id, front, back).await?;
+                    self.card_repository
+                        .update_content(id, Some(front), Some(back))
+                        .await?;
                 }
             }
             AssetDocument::LearningAssetSplit(split_id) => {
