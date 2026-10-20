@@ -178,8 +178,12 @@ impl AiClientProvider for DefaultAiClientProvider {
         }
 
         let (provider, model) = embed_model.identity();
-        let identity = Sha256::digest(format!("{provider}\0{model}\0{}", embed_model.ndims()));
-        let path = vector_store_directory.join(format!("{VECTOR_STORE_NAME}_{identity:x}"));
+        let identity: String =
+            Sha256::digest(format!("{provider}\0{model}\0{}", embed_model.ndims()))
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect();
+        let path = vector_store_directory.join(format!("{VECTOR_STORE_NAME}_{identity}"));
         let path = &*path.to_string_lossy();
         let conn = match Connection::open(path).await {
             Err(err) => {
