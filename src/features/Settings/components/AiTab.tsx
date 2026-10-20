@@ -172,7 +172,7 @@ function AiTab() {
 						<Stack gap="xs">
 							<FieldLabel
 								label="API key"
-								tooltip={`Your ${providerInfo.label} API key, used to authenticate requests. It is stored securely in your operating system's secret store.`}
+								tooltip={`Your ${providerInfo.label} API key, used to authenticate requests. It is saved locally on this device.`}
 							/>
 							<PasswordInput
 								key={`api-key-${provider}`}
