@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { notifications } from "@mantine/notifications";
 import { getLearningAssetSplitTexts } from "../../../api/elements/api/elementsApi";
 import { findMatches } from "../../../components/Editor/plugins/SearchHighlightPlugin/findMatches";
 import useAppSelector from "../../../hooks/useAppSelector";
@@ -48,32 +49,44 @@ export function useLearningAssetSearch({
 	const [countsBySeq, setCountsBySeq] = useState<Map<number, number>>(
 		new Map(),
 	);
-	const splitTextsRef = useRef<Map<number, string> | null>(null);
-	const splitTextsLearningAssetIdRef = useRef<string | null>(null);
+	const [splitTexts, setSplitTexts] = useState<{
+		learningAssetId: string;
+		texts: Map<number, string>;
+	} | null>(null);
 
-	// Fetched once, lazily, the first time search opens for this learning asset.
+	// Cache only completed loads, so closing or a failure leaves reopening retryable.
 	useEffect(() => {
-		if (!opened) return;
-		if (splitTextsLearningAssetIdRef.current === learningAssetId) return;
+		if (!opened || splitTexts?.learningAssetId === learningAssetId) return;
 		let cancelled = false;
-		splitTextsLearningAssetIdRef.current = learningAssetId;
-		void getLearningAssetSplitTexts(learningAssetId).then(texts => {
-			if (cancelled) return;
-			splitTextsRef.current = new Map(
-				texts.map(({ seq, text }) => [seq, text]),
-			);
-		});
+		void getLearningAssetSplitTexts(learningAssetId)
+			.then(texts => {
+				if (!cancelled)
+					setSplitTexts({
+						learningAssetId,
+						texts: new Map(texts.map(({ seq, text }) => [seq, text])),
+					});
+			})
+			.catch((error: unknown) => {
+				if (!cancelled)
+					notifications.show({
+						color: "red",
+						message: `Could not search the whole document: ${String(error)}`,
+					});
+			});
 		return () => {
 			cancelled = true;
 		};
-	}, [opened, learningAssetId]);
+	}, [opened, learningAssetId, splitTexts]);
 
-	// Recomputes counts for unmounted splits when the query/case flag changes,
+	// Recount unmounted splits when their snapshot arrives, search changes,
 	// or a split leaves the mount window.
 	useEffect(() => {
 		setCountsBySeq(prev => {
 			if (!query) return prev.size === 0 ? prev : new Map();
-			const texts = splitTextsRef.current;
+			const texts =
+				splitTexts?.learningAssetId === learningAssetId
+					? splitTexts.texts
+					: null;
 			if (!texts) return prev;
 			const next = new Map(prev);
 			for (const split of splits) {
@@ -86,7 +99,7 @@ export function useLearningAssetSearch({
 			}
 			return next;
 		});
-	}, [splits, mountedSeqs, query, caseSensitive]);
+	}, [splits, mountedSeqs, query, caseSensitive, splitTexts, learningAssetId]);
 
 	const onSplitMatches = useCallback((splitId: string, count: number) => {
 		const seq = Number(splitId);

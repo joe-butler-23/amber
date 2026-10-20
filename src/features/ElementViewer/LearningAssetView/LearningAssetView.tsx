@@ -61,18 +61,20 @@ export default function LearningAssetView({
 	const [contentWidth, containerRef] = useContentWidth();
 	const containerProps = useLineWidthContainerProps();
 
-	const [loadError, setLoadError] = useState<string | null>(null);
-	const [splits, setSplits] = useState<LearningAssetSplitMetaDto[] | null>(
-		null,
-	);
+	const [manifest, setManifest] = useState<
+		| { splits: LearningAssetSplitMetaDto[] }
+		| { error: string }
+		| null
+	>(null);
+	const splits = manifest && "splits" in manifest ? manifest.splits : null;
 	useEffect(() => {
 		let cancelled = false;
 		void getLearningAssetSplitManifest(learningAssetId)
 			.then(manifest => {
-				if (!cancelled) setSplits(manifest);
+				if (!cancelled) setManifest({ splits: manifest });
 			})
 			.catch((error: unknown) => {
-				if (!cancelled) setLoadError(String(error));
+				if (!cancelled) setManifest({ error: String(error) });
 			});
 		return () => {
 			cancelled = true;
@@ -248,6 +250,13 @@ export default function LearningAssetView({
 		return fn;
 	}, []);
 
+	if (manifest && "error" in manifest)
+		return (
+			<Alert color="red" title="Could not load this document">
+				{manifest.error}
+			</Alert>
+		);
+
 	if (!splits) {
 		return (
 			<Center py="xl">
@@ -255,13 +264,6 @@ export default function LearningAssetView({
 			</Center>
 		);
 	}
-
-	if (loadError)
-		return (
-			<Alert color="red" title="Could not load this document">
-				{loadError}
-			</Alert>
-		);
 
 	return (
 		<Container ref={containerRef} {...containerProps} py="lg">
